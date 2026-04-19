@@ -1,7 +1,7 @@
 CSL Examples
 ============
 
-Register to access the Cerebras SDK `here <https://www.cerebras.net/homepage-landing/developers/sdk-request/>`_.
+Register to access the Cerebras SDK `here <https://www.cerebras.ai/developers/sdk-request>`_.
 Documentation for the SDK can be found `here <https://sdk.cerebras.net>`_.
 
 This repository contains examples of CSL code. Each example has the following
