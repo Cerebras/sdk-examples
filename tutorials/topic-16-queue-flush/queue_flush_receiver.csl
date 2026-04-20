@@ -1,0 +1,131 @@
+// Copyright 2025 Cerebras Systems.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+param memcpy_params;
+// memcpy reserves input/output queue 0 and 1
+const sys_mod = @import_module("<memcpy/memcpy>", memcpy_params);
+
+const tile_config = @import_module("<tile_config>");
+const input_queue_config = tile_config.input_queue_config;
+
+const size = 15;
+const filter_size = 2;
+export var result1: [size]u32;
+export var result2: [size]u32;
+var result1_ptr: [*]u32 = &result1;
+var result2_ptr: [*]u32 = &result2;
+
+const delay_size = 500;
+export var dummy: [delay_size]u16;
+
+const memDSD = @get_dsd(mem1d_dsd, .{.tensor_access = |i|{size} -> result1[i]});
+
+const input_queue_id: i16 = 2;
+
+const in_color1 = @get_color(10);
+const iq = @get_input_queue(input_queue_id);
+const fabin1 = @get_dsd(fabin_dsd, .{.extent = size, .input_queue = iq});
+
+const in_color2 = @get_color(12);
+const fabin2 = @get_dsd(fabin_dsd, .{.extent = filter_size, .input_queue = iq});
+
+const main_id = @get_local_task_id(8);
+const exit_id = @get_local_task_id(9);
+// avoid using C10 and C12 for local task because they are used in routing colors
+const receive1_id = @get_local_task_id(13);
+const receive2_id = @get_local_task_id(14);
+const done_receive1_id = @get_local_task_id(15);
+
+const task_id = if (@is_arch("wse3")) @get_data_task_id(iq) else @get_data_task_id(in_color1);
+
+task main() void {
+  // dummy loop to increase the delay between @queue_flush(oq) and T29
+  // in queue_flush_sender.csl
+  var idx: u16 = 0;
+  while (idx < delay_size) : (idx += 1) {
+    dummy[idx] = idx;
+  }
+  @activate(receive1_id);
+}
+
+task receive1() void {
+  // activate done_receive1 to repurpose `iq` after data1 is received.
+  @mov32(memDSD, fabin1, .{.async = true, .activate = done_receive1});
+}
+
+// The task `receive1` has finished the microthread so the `iq` is empty.
+// It is safe to repurpose `iq` with `in_color2`.
+task done_receive1() void {
+  // bind the color `in_color2` to the input queue `iq`.
+  // `in_color2` binds to a filter, so filter_enable = true.
+  input_queue_config.encode_input_queue(input_queue_id, @get_int(in_color2), true);
+  // process next data in `in_color2`.
+  @activate(receive2_id);
+}
+
+task receive2() void {
+  const dest = @set_dsd_base_addr(memDSD, result2);
+  @mov32(dest, fabin2, .{.async = true, .activate = exit});
+}
+
+// RPC: receive two data sets from the sender via different colors
+// 1. data1 from in_color1(C10)
+// 2. data2 from in_color2(C12)
+// The input queue `iq` is reconfigured after data1 has been received via in_color1.
+// After that, data2 is received on `iq` with in_color2.
+fn launch() void {
+  @activate(main_id);
+}
+
+task exit() void {
+  // the user must unblock cmd color for every PE
+  sys_mod.unblock_cmd_stream();
+}
+
+comptime {
+  // input queue 2 is shared by in_color1 and in_color2.
+  // A microthread is used to read input queue 2, so
+  // the initial state of input queue 2 is blocked.
+  @block(task_id);
+
+  @bind_local_task(main, main_id);
+  @bind_local_task(exit, exit_id);
+
+  @bind_local_task(receive1, receive1_id);
+  @bind_local_task(done_receive1, done_receive1_id);
+  @bind_local_task(receive2, receive2_id);
+
+  @initialize_queue(iq, .{.color = in_color1});
+
+  @set_local_color_config(in_color1, .{.routes = .{.rx = .{WEST}, .tx = .{RAMP}}});
+
+  // only accept [0,1] wavelets among `size` wavelets
+  @set_local_color_config(in_color2, .{
+    .routes = .{.rx = .{WEST}, .tx = .{RAMP}},
+    .filter = .{
+            .kind = .{ .counter = true },
+            .count_data = true,
+            .count_control = false,
+            .init_counter = 0,
+            .max_counter  = filter_size-1,
+            .limit1 = (size - 1)
+        }
+  });
+}
+
+comptime {
+  @export_symbol(launch);
+  @export_symbol(result1_ptr, "result1");
+  @export_symbol(result2_ptr, "result2");
+}

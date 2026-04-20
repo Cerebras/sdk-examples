@@ -13,11 +13,11 @@
 // limitations under the License.
 
 
-param memcpyParams: comptime_struct;
+param memcpyParams;
 
-param spmvParams: comptime_struct;
+param spmvParams;
 
-param reduceParams: comptime_struct;
+param reduceParams;
 
 // parameters
 param nrows: u32;   // total number of matrix rows
@@ -59,7 +59,8 @@ const timestamp = @import_module("<time>");
 const sys_mod = @import_module( "<memcpy/memcpy>", memcpyParams);
 
 // input_queues cannot overlap with output_queues
-const spmv_mod = @import_module( "hypersparse_spmv/pe.csl", @concat_structs(spmvParams, .{
+const spmv_mod = @import_module( "hypersparse_spmv/pe.csl", .{
+     .spmv_params = spmvParams,
      .f_callback = sys_mod.unblock_cmd_stream,
 
      .nrows = nrows,
@@ -85,18 +86,19 @@ const spmv_mod = @import_module( "hypersparse_spmv/pe.csl", @concat_structs(spmv
      .output_queues=[2]u16{2,3},
      .dest_dsr_ids = [6]u16{1, 4, 5, 6, 2, 3},
      .src1_dsr_ids = [6]u16{4, 1, 6, 7, 2, 3},
-     }));
+     });
 
 // allreduce uses input queue/output queue 5
 // dest_dsr and src0_dsr must be a valid pair, for example (7,1) is invalid
-const reduce_mod = @import_module( "allreduce2R1E/pe.csl", @concat_structs(reduceParams, .{
+const reduce_mod = @import_module( "allreduce2R1E/pe.csl", .{
+     .reduce_params = reduceParams,
      .f_callback = sys_mod.unblock_cmd_stream,
      .MAX_ZDIM = 1,
      .queues = [1]u16{5},
      .dest_dsr_ids = [1]u16{7},
      .src0_dsr_ids = [1]u16{7},
      .src1_dsr_ids = [1]u16{5}
-     }));
+     });
 
 // tsc library
 var tsc_start_buffer = @zeros([timestamp.tsc_size_words]u16);

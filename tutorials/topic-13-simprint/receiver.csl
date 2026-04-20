@@ -40,7 +40,7 @@
 //   7                    16      25                    34
 //   8                    17      26                    35
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 const sys_mod = @import_module("<memcpy/memcpy>", memcpy_params);
 const layout_mod = @import_module("<layout>");

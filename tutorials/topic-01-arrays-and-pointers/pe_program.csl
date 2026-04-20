@@ -14,7 +14,7 @@
 
 // Not a complete program; the top-level source file is layout.csl
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 const sys_mod = @import_module("<memcpy/memcpy>", memcpy_params);
 

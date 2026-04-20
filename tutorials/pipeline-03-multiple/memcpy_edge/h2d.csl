@@ -43,11 +43,13 @@ const INFINITE_DSD_LEN: u16 = 0x7fff;
 
 var fab_recv_wdsd_1 = @get_dsd(fabin_dsd, .{
   .extent = INFINITE_DSD_LEN,
-  .fabric_color = MEMCPYH2D_1,
   .input_queue = h2d_1_iq,
 });
 
-var fab_trans_wdsd_1 = @get_dsd(fabout_dsd, .{
+var fab_trans_wdsd_1 = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+  .extent = INFINITE_DSD_LEN,
+  .output_queue = USER_IN_1_oq,
+} else .{
   .extent = INFINITE_DSD_LEN,
   .fabric_color = USER_IN_1,
   .output_queue = USER_IN_1_oq,
@@ -55,11 +57,13 @@ var fab_trans_wdsd_1 = @get_dsd(fabout_dsd, .{
 
 var fab_recv_wdsd_2 = @get_dsd(fabin_dsd, .{
    .extent = INFINITE_DSD_LEN,
-   .fabric_color = MEMCPYH2D_2,
    .input_queue = h2d_2_iq,
 });
 
-var fab_trans_wdsd_2 = @get_dsd(fabout_dsd, .{
+var fab_trans_wdsd_2 = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+    .extent = INFINITE_DSD_LEN,
+    .output_queue = USER_IN_2_oq,
+} else .{
     .extent = INFINITE_DSD_LEN,
     .fabric_color = USER_IN_2,
     .output_queue = USER_IN_2_oq,
@@ -67,7 +71,7 @@ var fab_trans_wdsd_2 = @get_dsd(fabout_dsd, .{
 
 // if no user's color is defined, f_startup() is empty
 fn f_startup() void {
-  if (!@is_same_type(@type_of(MEMCPYH2D_1), void) and !@is_same_type(@type_of(USER_IN_1), void)) {
+  if (@type_of(MEMCPYH2D_1) != void and @type_of(USER_IN_1) != void) {
     // receive data from streaming H2D
     @mov32(fifo1, fab_recv_wdsd_1, .{ .async = true });
 
@@ -75,7 +79,7 @@ fn f_startup() void {
     @mov32(fab_trans_wdsd_1, fifo1, .{ .async = true });
   }
 
-  if (!@is_same_type(@type_of(MEMCPYH2D_2), void) and !@is_same_type(@type_of(USER_IN_2), void)) {
+  if (@type_of(MEMCPYH2D_2) != void and @type_of(USER_IN_2) != void) {
     // receive data from streaming H2D
     @mov32(fifo2, fab_recv_wdsd_2, .{ .async = true });
 
@@ -85,24 +89,21 @@ fn f_startup() void {
 }
 
 comptime {
-  if (!@is_same_type(@type_of(USER_IN_1), void)) {
+  if (@type_of(USER_IN_1) != void) {
     @set_local_color_config(USER_IN_1, .{ .routes = .{ .rx = .{ RAMP }, .tx = .{ txdir }}});
   }
 
-  if (!@is_same_type(@type_of(USER_IN_2), void)) {
+  if (@type_of(USER_IN_2) != void) {
     @set_local_color_config(USER_IN_2, .{ .routes = .{ .rx = .{ RAMP }, .tx = .{ txdir }}});
   }
 
-  // On WSE-3, we must explicitly initialize input and output queues
-  if (@is_arch("wse3")) {
-    if (!@is_same_type(@type_of(USER_IN_1), void)) {
-      @initialize_queue(h2d_1_iq, .{ .color = MEMCPYH2D_1 });
-      @initialize_queue(USER_IN_1_oq, .{ .color = USER_IN_1 });
-    }
+  if (@type_of(USER_IN_1) != void) {
+    @initialize_queue(h2d_1_iq, .{ .color = @get_color(@bitcast(u16, MEMCPYH2D_1)) });
+    @initialize_queue(USER_IN_1_oq, if (@is_arch("wse3")) .{ .color = USER_IN_1 } else .{});
+  }
 
-    if (!@is_same_type(@type_of(USER_IN_2), void)) {
-      @initialize_queue(h2d_2_iq, .{ .color = MEMCPYH2D_2 });
-      @initialize_queue(USER_IN_2_oq, .{ .color = USER_IN_2 });
-    }
+  if (@type_of(USER_IN_2) != void) {
+    @initialize_queue(h2d_2_iq, .{ .color = @get_color(@bitcast(u16, MEMCPYH2D_2)) });
+    @initialize_queue(USER_IN_2_oq, if (@is_arch("wse3")) .{ .color = USER_IN_2 } else .{});
   }
 }

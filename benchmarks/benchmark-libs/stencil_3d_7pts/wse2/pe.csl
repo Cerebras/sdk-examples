@@ -168,25 +168,21 @@ var mem_x_z_buf_dsd = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{1} -> dummy_f3
 
 var fab_recv_west_wdsd =  @get_dsd(fabin_dsd, .{
    .extent = BLOCK_SIZE,
-   .fabric_color = c_recv_west,
    .input_queue = @get_input_queue(input_queues[0])
 });
 
 var fab_recv_east_wdsd =  @get_dsd(fabin_dsd, .{
    .extent = BLOCK_SIZE,
-   .fabric_color = c_recv_east,
    .input_queue = @get_input_queue(input_queues[1])
 });
 
 var fab_recv_south_wdsd =  @get_dsd(fabin_dsd, .{
    .extent = BLOCK_SIZE,
-   .fabric_color = c_recv_south,
    .input_queue = @get_input_queue(input_queues[2])
 });
 
 var fab_recv_north_wdsd =  @get_dsd(fabin_dsd, .{
    .extent = BLOCK_SIZE,
-   .fabric_color = c_recv_north,
    .input_queue = @get_input_queue(input_queues[3])
 });
 

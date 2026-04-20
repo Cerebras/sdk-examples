@@ -40,7 +40,7 @@
 //   7                    16               25                    34
 //   8                    17               26                    35
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 param pe_id: u16;
 
 // Colors
@@ -74,7 +74,10 @@ fn main_fn() void {
     .tensor_access = |i|{size} -> data[i]
   });
 
-  const out_dsd = @get_dsd(fabout_dsd, .{
+  const out_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+    .extent = size,
+    .output_queue = tx_oq,
+  } else .{
     .extent = size,
     .fabric_color = exch_color,
     .output_queue = tx_oq,

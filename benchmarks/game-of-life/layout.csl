@@ -62,24 +62,21 @@ layout {
 
     const x_color_params = if (pe_x % 2 == 0) x_even_params else x_odd_params;
 
-    const x_params = @concat_structs(
-                       .{ .is_west_edge = west_edge, .is_east_edge = east_edge,
-                          .memcpy_params = memcpy.get_params(pe_x) },
-                       x_color_params
-                     );
-
     for (@range(i16, y_dim)) |pe_y| {
       const north_edge = (pe_y == 0);
       const south_edge = (pe_y == y_dim-1);
 
       const y_color_params = if (pe_y % 2 == 0) y_even_params else y_odd_params;
 
-      const y_params = @concat_structs(
-                         .{ .is_north_edge = north_edge, .is_south_edge = south_edge },
-                         y_color_params
-                       );
-
-      @set_tile_code(pe_x, pe_y, "pe_program.csl", @concat_structs(x_params, y_params));
+      @set_tile_code(pe_x, pe_y, "pe_program.csl", .{
+        .memcpy_params = memcpy.get_params(pe_x),
+        .is_west_edge = west_edge,
+        .is_east_edge = east_edge,
+        .is_north_edge = north_edge,
+        .is_south_edge = south_edge,
+        .x_colors = x_color_params,
+        .y_colors = y_color_params,
+      });
     }
   }
 

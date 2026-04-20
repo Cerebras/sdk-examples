@@ -48,39 +48,44 @@ const TO: direction = directions.flip(FROM);
 // Odd numbered PEs are receiving from TO and sending to FROM, using colors
 // c3 and c4. They have a pass-thru route for either c1 or c2 in the opposite
 // direction.
-fn get_colors_ns(pe:i16) comptime_struct {
+const ColorsNS = struct {
+  recv_ns: color,
+  send_ns: color,
+};
+
+fn get_colors_ns(pe:i16) ColorsNS {
   // first PE
   if (pe == 0) {
-    return .{ .recv_ns = c4, .send_ns = c1 };
+    return ColorsNS{ .recv_ns = c4, .send_ns = c1 };
   }
 
   // last PE
   if (pe == LAST_PE) {
     if (LAST_PE % 4 == 1) {
-      return .{ .recv_ns = c1, .send_ns = c4 };
+      return ColorsNS{ .recv_ns = c1, .send_ns = c4 };
     }
     if (LAST_PE % 4 == 2) {
-      return .{ .recv_ns = c1, .send_ns = c3 };
+      return ColorsNS{ .recv_ns = c1, .send_ns = c3 };
     }
     if (LAST_PE % 4 == 3) {
-      return .{ .recv_ns = c2, .send_ns = c3 };
+      return ColorsNS{ .recv_ns = c2, .send_ns = c3 };
     }
     // LAST_PE % 4 == 0
-    return .{ .recv_ns = c2, .send_ns = c4 };
+    return ColorsNS{ .recv_ns = c2, .send_ns = c4 };
   }
 
   // other PEs
   if (pe % 4 == 1) { // odd PE
-    return .{ .recv_ns = c3, .send_ns = c4 };
+    return ColorsNS{ .recv_ns = c3, .send_ns = c4 };
   }
   if (pe % 4 == 2) { // even PE
-    return .{ .recv_ns = c1, .send_ns = c2 };
+    return ColorsNS{ .recv_ns = c1, .send_ns = c2 };
   }
   if (pe % 4 == 3) { // odd PE alternate
-    return .{ .recv_ns = c4, .send_ns = c3 };
+    return ColorsNS{ .recv_ns = c4, .send_ns = c3 };
   }
   // even PE alternate
-  return .{ .recv_ns = c2, .send_ns = c1 };
+  return ColorsNS{ .recv_ns = c2, .send_ns = c1 };
 }
 
 // See routing logic described in comment on get_colors_ns.
@@ -126,38 +131,41 @@ fn set_routes(col:i16, row:i16, pe:i16) void {
 }
 
 // This is the same as get_colors_ns, except for field names of returned struct.
-// Once we have comptime_struct field access operation, we can delete this
-// function and just use the other one.
-fn get_colors_we(col:i16) comptime_struct {
+const ColorsWE = struct {
+  recv_we: color,
+  send_we: color,
+};
+
+fn get_colors_we(col:i16) ColorsWE {
   // first column
   if (col == 0) {
-    return .{ .recv_we = c4, .send_we = c1 };
+    return ColorsWE{ .recv_we = c4, .send_we = c1 };
   }
 
   // last column
   if (col == LAST_PE) {
     if (LAST_PE % 4 == 1) {
-      return .{ .recv_we = c1, .send_we = c4 };
+      return ColorsWE{ .recv_we = c1, .send_we = c4 };
     }
     if (LAST_PE % 4 == 2) {
-      return .{ .recv_we = c1, .send_we = c3 };
+      return ColorsWE{ .recv_we = c1, .send_we = c3 };
     }
     if (LAST_PE % 4 == 3) {
-      return .{ .recv_we = c2, .send_we = c3 };
+      return ColorsWE{ .recv_we = c2, .send_we = c3 };
     }
-    return .{ .recv_we = c2, .send_we = c4 };
+    return ColorsWE{ .recv_we = c2, .send_we = c4 };
   }
 
   // other columns
   if (col % 4 == 1) { // odd column
-    return .{ .recv_we = c3, .send_we = c4 };
+    return ColorsWE{ .recv_we = c3, .send_we = c4 };
   }
   if (col % 4 == 2) { // even column
-    return .{ .recv_we = c1, .send_we = c2 };
+    return ColorsWE{ .recv_we = c1, .send_we = c2 };
   }
   if (col % 4 == 3) { // odd column alternate
-    return .{ .recv_we = c4, .send_we = c3 };
+    return ColorsWE{ .recv_we = c4, .send_we = c3 };
   }
   // even column alternate
-  return .{ .recv_we = c2, .send_we = c1 };
+  return ColorsWE{ .recv_we = c2, .send_we = c1 };
 }

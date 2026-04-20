@@ -35,19 +35,21 @@ const INFINITE_DSD_LEN: u16 = 0x7fff;
 
 var fab_recv_wdsd = @get_dsd(fabin_dsd, .{
   .extent = INFINITE_DSD_LEN,
-  .fabric_color = USER_OUT_1,
   .input_queue = USER_OUT_1_iq
 });
 
-var fab_trans_wdsd = @get_dsd(fabout_dsd, .{
+var fab_trans_wdsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
   .extent = INFINITE_DSD_LEN,
-  .fabric_color = MEMCPYD2H_1,
+  .output_queue = d2h_oq
+} else .{
+  .extent = INFINITE_DSD_LEN,
+  .fabric_color = @get_color(@bitcast(u16, MEMCPYD2H_1)),
   .output_queue = d2h_oq
 });
 
 // if USER_OUT_1 is not valid, f_startup() is empty
 fn f_startup() void {
-  if (!@is_same_type(@type_of(MEMCPYD2H_1), void) and !@is_same_type(@type_of(USER_OUT_1), void)) {
+  if (@type_of(MEMCPYD2H_1) != void and @type_of(USER_OUT_1) != void) {
     // receive data from USER_OUT_1
     @mov32(fifo1, fab_recv_wdsd, .{ .async = true });
 
@@ -57,13 +59,10 @@ fn f_startup() void {
 }
 
 comptime {
-  if (!@is_same_type(@type_of(USER_OUT_1), void)) {
+  if (@type_of(USER_OUT_1) != void) {
     @set_local_color_config(USER_OUT_1, .{ .routes = .{ .rx = .{ rxdir }, .tx = .{ RAMP }}});
 
-    // On WSE-3, we must explicitly initialize input and output queues
-    if (@is_arch("wse3")) {
-      @initialize_queue(d2h_oq, .{ .color = MEMCPYD2H_1 });
-      @initialize_queue(USER_OUT_1_iq, .{ .color = USER_OUT_1 });
-    }
+    @initialize_queue(d2h_oq, if (@is_arch("wse3")) .{ .color = @get_color(@bitcast(u16, MEMCPYD2H_1)) } else .{});
+    @initialize_queue(USER_OUT_1_iq, .{ .color = USER_OUT_1 });
   }
 }

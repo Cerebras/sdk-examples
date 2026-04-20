@@ -13,24 +13,27 @@
 // limitations under the License.
 
 param size: u16;
-param rx1: color;
-param rx2: color;
-param tx: color;
+param rx1: u16;
+param rx2: u16;
+param tx: u16;
 
 const in_q1 = @get_input_queue(0);
 const in_q2 = @get_input_queue(1);
 const out_q = @get_output_queue(0);
 
-const input1 = @get_dsd(fabin_dsd, .{.extent = size,
-                                     .fabric_color = rx1,
+// Each operand is 16-bits while 'size' specifies the number of
+// 32-bit wavelets. Each wavelet packs 2 16-bit operands.
+const num_operands = size * 2;
+const input1 = @get_dsd(fabin_dsd, .{.extent = size * 2,
+                                     .fabric_color = @get_color(rx1),
                                      .input_queue = in_q1});
 
-const input2 = @get_dsd(fabin_dsd, .{.extent = size,
-                                     .fabric_color = rx2,
+const input2 = @get_dsd(fabin_dsd, .{.extent = size * 2,
+                                     .fabric_color = @get_color(rx2),
                                      .input_queue = in_q2});
 
-const output = @get_dsd(fabout_dsd, .{.extent = size,
-                                      .fabric_color = tx,
+const output = @get_dsd(fabout_dsd, .{.extent = size * 2,
+                                      .fabric_color = @get_color(tx),
                                       .output_queue = out_q});
 
 // WSE3 does not allow multiple fabric inputs per DSD operation.
@@ -48,10 +51,10 @@ comptime {
   @bind_local_task(main, main_id);
   @activate(main_id);
 
-  @initialize_queue(in_q1, .{.color = rx1});
-  @initialize_queue(in_q2, .{.color = rx2});
+  @initialize_queue(in_q1, .{.color = @get_color(rx1)});
+  @initialize_queue(in_q2, .{.color = @get_color(rx2)});
 
   if (@is_arch("wse3")) {
-    @initialize_queue(out_q, .{.color = tx});
+    @initialize_queue(out_q, .{.color = @get_color(tx)});
   }
 }

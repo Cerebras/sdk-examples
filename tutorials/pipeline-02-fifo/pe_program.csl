@@ -17,7 +17,7 @@
 //
 // H2D --> fifo --> C1 --> addh() --> D2H
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 param size: i16;
 param main: u16;
@@ -43,11 +43,13 @@ const INFINITE_DSD_LEN: u16 = 0x7fff;
 
 const h2d_in_dsd = @get_dsd(fabin_dsd, .{
   .extent = INFINITE_DSD_LEN,
-  .fabric_color = sys_mod.MEMCPYH2D_1,
   .input_queue = h2d_1_iq
 });
 
-const C1_out_dsd = @get_dsd(fabout_dsd, .{
+const C1_out_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+  .extent = INFINITE_DSD_LEN,
+  .output_queue = C1_oq
+} else .{
   .extent = INFINITE_DSD_LEN,
   .fabric_color = C1,
   .output_queue = C1_oq
@@ -55,15 +57,10 @@ const C1_out_dsd = @get_dsd(fabout_dsd, .{
 
 const C1_in_dsd = @get_dsd(fabin_dsd, .{
   .extent = size,
-  .fabric_color = C1,
   .input_queue = C1_iq
 });
 
-const d2h_out_dsd = @get_dsd(fabout_dsd, .{
-  .extent = size,
-  .fabric_color = sys_mod.MEMCPYD2H_1,
-  .output_queue = d2h_1_oq
-});
+const d2h_out_dsd = sys_mod.get_streaming_fabout_dsd(@get_color(@bitcast(u16, sys_mod.MEMCPYD2H_1)), size, d2h_1_oq);
 
 const buf = [1]i16{ 1 };
 const one_dsd = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{size} -> buf[0] });
@@ -84,11 +81,8 @@ comptime {
   @bind_local_task(main_task, main_task_id);
   @activate(main_task_id);
 
-  // On WSE-3, we must explicitly initialize input and output queues
-  if (@is_arch("wse3")) {
-    @initialize_queue(h2d_1_iq,  .{ .color = sys_mod.MEMCPYH2D_1 });
-    @initialize_queue(d2h_1_oq,  .{ .color = sys_mod.MEMCPYD2H_1 });
-    @initialize_queue(C1_iq, .{ .color = C1 });
-    @initialize_queue(C1_oq, .{ .color = C1 });
-  }
+  @initialize_queue(h2d_1_iq,  .{ .color = @get_color(@bitcast(u16, sys_mod.MEMCPYH2D_1)) });
+  @initialize_queue(d2h_1_oq, if (@is_arch("wse3")) .{ .color = @get_color(@bitcast(u16, sys_mod.MEMCPYD2H_1)) } else .{});
+  @initialize_queue(C1_iq, .{ .color = C1 });
+  @initialize_queue(C1_oq, if (@is_arch("wse3")) .{ .color = C1 } else .{});
 }

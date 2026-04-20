@@ -72,7 +72,7 @@ assert FP in [1, 2]
 assert FP == 1 or DIM == 1, "2D does not support FP2"
 
 width = 1 if DIM == 1 else Nz
-is_2D = (width > 1)
+is_2D = width > 1
 Nx = Nz if is_2D else width
 height = 1
 Ny = height

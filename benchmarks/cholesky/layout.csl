@@ -53,19 +53,23 @@ layout {
     var y = 0;
     while (y < P) : (y += 1) {
       const memcpy_params = memcpy.get_params(x);
-      const params = .{ .px = x, .py = y, .Nt = Nt,
-                        .row_color = row_color, .col_color = col_color,
-                        .main_task_id = main_task_id, .cont_task_id = cont_task_id };
 
       if (x <= y) {
-        @set_tile_code(x, y, "pe.csl", @concat_structs( .{
+        @set_tile_code(x, y, "pe.csl", .{
              .memcpy_params = memcpy_params,
-        }, params));
+             .px = x,
+             .py = y,
+             .Nt = Nt,
+             .row_color = row_color,
+             .col_color = col_color,
+             .main_task_id = main_task_id,
+             .cont_task_id = cont_task_id,
+        });
       } else {
-        const launch_params = .{ .Nt = Nt };
-        @set_tile_code(x, y, "launch.csl", @concat_structs( .{
+        @set_tile_code(x, y, "launch.csl", .{
              .memcpy_params = memcpy_params,
-        }, launch_params));
+             .Nt = Nt,
+        });
       }
     }
   }

@@ -14,7 +14,7 @@
 
 // This does y = Ax + b
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 // memcpy reserves input queue 0 and output queue 0
 const sys_mod = @import_module( "<memcpy/memcpy>", memcpy_params);
@@ -53,12 +53,12 @@ const recv_iq:  input_queue  = @get_input_queue(5);
 // On WSE-2, data task IDs are created from colors; on WSE-3, from input queues
 // Data task h2d_x_task triggered by wlts along MEMCPYH2D_DATA_1
 const h2d_x_task_id: data_task_id =
-  if      (@is_arch("wse2")) @get_data_task_id(sys_mod.MEMCPYH2D_1)
+  if      (@is_arch("wse2")) @get_data_task_id(@get_color(@bitcast(u16, sys_mod.MEMCPYH2D_1)))
   else if (@is_arch("wse3")) @get_data_task_id(h2d_x_iq);
 
 // Data task h2d_b_task triggered by wlts along MEMCPYH2D_DATA_2
 const h2d_b_task_id: data_task_id =
-  if      (@is_arch("wse2")) @get_data_task_id(sys_mod.MEMCPYH2D_2)
+  if      (@is_arch("wse2")) @get_data_task_id(@get_color(@bitcast(u16, sys_mod.MEMCPYH2D_2)))
   else if (@is_arch("wse3")) @get_data_task_id(h2d_b_iq);
 
 // Data task fmac_task triggered by wlts along x_in
@@ -84,7 +84,6 @@ const dsd_A = @get_dsd(mem1d_dsd, .{
 const dsd_mul_temp = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{A_local_dim_x} -> mul_temp[i]});
 
 const dsd_in = @get_dsd(fabin_dsd, .{
-    .fabric_color = recv,
     .extent = B_local_dim_x,
     .input_queue = recv_iq
   });
@@ -114,18 +113,19 @@ task fmac_task(wlet_data: f16, idx: u16) void {
 //
 // The host waits until D2H receives y --> y = A*x is done
 task reduce_task() void {
-  const dsd_out = @get_dsd(fabout_dsd, .{
-    .fabric_color = if (last_column) sys_mod.MEMCPYD2H_1 else send,
-    .extent = B_local_dim_x,
-    .output_queue = send_oq
-  });
+  const c = if (last_column) @get_color(@bitcast(u16, sys_mod.MEMCPYD2H_1)) else send;
+  // TODO: Enable SIMD on memcpy library.
+  const dsd_out = sys_mod.get_streaming_fabout_dsd(c, B_local_dim_x, send_oq);
   @faddh(dsd_out, dsd_in, dsd_mul_temp, .{ .async = true });
 }
 
 var buf = @zeros([1]u32);
 const mem_buf_dsd = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{1} -> buf[i] });
 
-const fab_trans_x_wdsd = @get_dsd(fabout_dsd, .{
+const fab_trans_x_wdsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+    .extent = 1,
+    .output_queue = x_in_oq
+  } else .{
     .extent = 1,
     .fabric_color = x_in,
     .output_queue = x_in_oq
@@ -139,7 +139,10 @@ task wtt_memcpyh2d_x(data: u32) void {
   @mov32(fab_trans_x_wdsd, mem_buf_dsd, .{ .async = true, .unblock = h2d_x_task_id });
 }
 
-const fab_trans_b_wdsd = @get_dsd(fabout_dsd, .{
+const fab_trans_b_wdsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+  .extent = 1,
+  .output_queue = recv_oq
+} else .{
   .extent = 1,
   .fabric_color = recv,
   .output_queue = recv_oq
@@ -162,18 +165,15 @@ comptime {
   @bind_data_task(fmac_task, x_in_task_id);
   @bind_local_task(reduce_task, REDUCE);
 
-  // On WSE-3, we must explicitly initialize input and output queues
-  if (@is_arch("wse3")) {
-    // These input queues are bound to tasks for WSE-3
-    @initialize_queue(h2d_x_iq, .{ .color = sys_mod.MEMCPYH2D_1 });
-    @initialize_queue(h2d_b_iq, .{ .color = sys_mod.MEMCPYH2D_2 });
-    @initialize_queue(x_in_iq,  .{ .color = x_in });
-    // These queues are used in microthreaded ops on WSE-2 and WSE-3
-    @initialize_queue(send_oq,  .{ .color = if (last_column) sys_mod.MEMCPYD2H_1 else send });
-    @initialize_queue(x_in_oq,  .{ .color = x_in });
-    @initialize_queue(recv_oq,  .{ .color = recv });
-    @initialize_queue(recv_iq,  .{ .color = recv });
-  }
+  // These input queues are bound to tasks for WSE-3
+  @initialize_queue(h2d_x_iq, .{ .color = @get_color(@bitcast(u16, sys_mod.MEMCPYH2D_1)) });
+  @initialize_queue(h2d_b_iq, .{ .color = @get_color(@bitcast(u16, sys_mod.MEMCPYH2D_2)) });
+  @initialize_queue(x_in_iq,  .{ .color = x_in });
+  // These queues are used in microthreaded ops on WSE-2 and WSE-3
+  @initialize_queue(send_oq, if (@is_arch("wse3")) .{ .color = if (last_column) @get_color(@bitcast(u16, sys_mod.MEMCPYD2H_1)) else send } else .{});
+  @initialize_queue(x_in_oq, if (@is_arch("wse3")) .{ .color = x_in } else .{});
+  @initialize_queue(recv_oq, if (@is_arch("wse3")) .{ .color = recv } else .{});
+  @initialize_queue(recv_iq,  .{ .color = recv });
 
   @export_symbol(ptr_A, "A");
 }

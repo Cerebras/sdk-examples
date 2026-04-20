@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpy_params: comptime_struct;
-param tally_params: comptime_struct;
+param memcpy_params;
+param tally_params;
 
-// Colors
-param send_we: color;
-param send_ns: color;
-
-param recv_we: color;
-param recv_ns: color;
+// struct { send_we: color, recv_we: color }
+param we_colors;
+// struct { send_ns: color, recv_ns: color }
+param ns_colors;
 
 // Task IDs
-const recv_we_task_id: data_task_id = @get_data_task_id(recv_we);
-const recv_ns_task_id: data_task_id = @get_data_task_id(recv_ns);
+const recv_we_task_id: data_task_id = @get_data_task_id(we_colors.recv_we);
+const recv_ns_task_id: data_task_id = @get_data_task_id(ns_colors.recv_ns);
 
 const TALLY_EXIT: local_task_id = @get_local_task_id(15);
 const START:      local_task_id = @get_local_task_id(24);
@@ -67,13 +65,13 @@ const ew_mdsd  = @get_dsd(mem1d_dsd, .{.tensor_access=|i|{1}->stage_ew[i]});
 const stage_mdsd  = @get_dsd(
     mem1d_dsd, .{.tensor_access=|i|{1}->stage_input[i]});
 
-const ns_dsd_inputs = @get_dsd(fabout_dsd, .{.fabric_color = send_ns, .extent = 1,
+const ns_dsd_inputs = @get_dsd(fabout_dsd, .{.fabric_color = ns_colors.send_ns, .extent = 1,
                                              .output_queue = @get_output_queue(0)});
-const ns_dsd_sender = @get_dsd(fabout_dsd, .{.fabric_color = send_ns, .extent = 1,
+const ns_dsd_sender = @get_dsd(fabout_dsd, .{.fabric_color = ns_colors.send_ns, .extent = 1,
                                              .output_queue = @get_output_queue(1)});
-const ew_dsd_inputs = @get_dsd(fabout_dsd, .{.fabric_color = send_we, .extent = 1,
+const ew_dsd_inputs = @get_dsd(fabout_dsd, .{.fabric_color = we_colors.send_we, .extent = 1,
                                              .output_queue = @get_output_queue(2)});
-const ew_dsd_sender = @get_dsd(fabout_dsd, .{.fabric_color = send_we, .extent = 1,
+const ew_dsd_sender = @get_dsd(fabout_dsd, .{.fabric_color = we_colors.send_we, .extent = 1,
                                              .output_queue = @get_output_queue(3)});
 
 // minimum FIFO_SIZE is 2
@@ -181,12 +179,12 @@ fn repack_wavelet_hop_horizontal(wavelety:u32) u32 {
   return waveletx;
 }
 
-const tally = @import_module("<kernels/tally/pe>",
-  @concat_structs(tally_params, .{
+const tally = @import_module("<kernels/tally/pe>", .{
+    .tally_params = tally_params,
     .output_queues=[2]u16{4, 5}, // we use 0-3 above
     .input_queues=[2]u16{6, 7}, // output queues use 0,1,2,3,4,5
     .callback = TALLY_EXIT
-  }));
+  });
 
 fn keep(waveletx:u32) void {
   var bucket:u32 = (waveletx << 20) >> 20;
@@ -260,7 +258,7 @@ task f_tally_exit() void {
   // we use output queue 1 (UT1)
   const outDsd = @get_dsd(fabout_dsd, .{
     .extent = 1,
-    .fabric_color = sys_mod.MEMCPYD2H_1,
+    .fabric_color = @get_color(@bitcast(u16, sys_mod.MEMCPYD2H_1)),
     .output_queue = @get_output_queue(1)
   });
 

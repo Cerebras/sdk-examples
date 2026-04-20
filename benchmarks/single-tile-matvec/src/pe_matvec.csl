@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 param nb: u16;    // array tile size, corresponds to matrix dimension
 param iters: u16; // num iterations to run matvec

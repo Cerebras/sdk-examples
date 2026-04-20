@@ -245,7 +245,11 @@ def main():
 
   tsc_tensor_d2h = np.zeros(6).astype(np.uint16)
   min_cycles = math.inf
+  min_w = math.inf
+  min_h = math.inf
   max_cycles = 0
+  max_w = 0
+  max_h = 0
 
   for w in range(width):
     for h in range(height):

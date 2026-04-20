@@ -101,15 +101,15 @@ Branches
 --------
 
 For each release of the SDK, there is a corresponding release tag in this
-repository which contains a version of the CSL examples which are compatible
-with that SDK release. For example, the tag ``rel-sdk-1.4.0`` in this
-repository contains a version of the CSL examples which will work (compile and
-simulate) with the SDK 1.4.0 release. The ``master`` branch is identical to the
+repository which contains a version of the SDK examples which are compatible
+with that SDK release. For example, the tag ``rel-sdk-2.10.0`` in this
+repository contains a version of the SDK examples which will work (compile and
+simulate) with the SDK 2.10.0 release. The ``master`` branch is identical to the
 newest release.
 
 Full backward compatibility of the SDK is not guaranteed.
-This means that a CSL example compatible with an older SDK release may not work
-with a newer SDK release.
+This means that a CSL code example compatible with an older SDK release may not
+work with a newer SDK release.
 
 Documentation
 -------------

@@ -29,7 +29,23 @@ const SYNC_Y: local_task_id = entrypoints[1];
 const SYNC_BCAST: local_task_id = entrypoints[2];
 const EXIT: local_task_id = entrypoints[3];
 
-fn get_params(px:i16, py:i16) comptime_struct {
+const Params = struct {
+    c_recv_px: color,
+    c_send_px: color,
+    c_recv_py: color,
+    c_send_py: color,
+    c_bcast: color,
+    STARTUP: local_task_id,
+    SYNC_Y: local_task_id,
+    SYNC_BCAST: local_task_id,
+    EXIT: local_task_id,
+    first_px: bool,
+    last_px: bool,
+    first_py: bool,
+    last_py: bool,
+};
+
+fn get_params(px:i16, py:i16) Params {
 
     var first_py: bool = (0 == py);
     var last_py: bool = ((height-1) == py);
@@ -59,7 +75,7 @@ fn get_params(px:i16, py:i16) comptime_struct {
         c_send_py = C2;
     }
 
-    return .{
+    return Params{
         .c_recv_px = c_recv_px,
         .c_send_px = c_send_px,
         .c_recv_py = c_recv_py,

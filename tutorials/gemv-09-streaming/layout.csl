@@ -29,9 +29,6 @@ param MEMCPYD2H_DATA_1_ID: i16; // streams y from right column to host
 const ax_color_1:       color = @get_color(3); // sends/recvs partial result Ax EAST
 const ax_color_2:       color = @get_color(4); // sends/recvs partial result Ax EAST
 const x_color:          color = @get_color(5); // sends/recvs elems x
-const MEMCPYH2D_DATA_1: color = @get_color(MEMCPYH2D_DATA_1_ID);
-const MEMCPYH2D_DATA_2: color = @get_color(MEMCPYH2D_DATA_2_ID);
-const MEMCPYD2H_DATA_1: color = @get_color(MEMCPYD2H_DATA_1_ID);
 
 // Task IDs
 
@@ -39,39 +36,39 @@ const MEMCPYD2H_DATA_1: color = @get_color(MEMCPYD2H_DATA_1_ID);
 const memcpy = @import_module("<memcpy/get_params>", .{
   .width = kernel_x_dim,
   .height = kernel_y_dim,
-  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1,
-  .MEMCPYH2D_2 = MEMCPYH2D_DATA_2,
-  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1
+  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1_ID,
+  .MEMCPYH2D_2 = MEMCPYH2D_DATA_2_ID,
+  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1_ID
 });
 
 layout {
   // PE coordinates are (column, row)
   @set_rectangle(kernel_x_dim, kernel_y_dim);
 
-  const common_params = .{
-    .M_per_PE = M / kernel_y_dim,
-    .N_per_PE = N / kernel_x_dim,
-    .kernel_x_dim = kernel_x_dim,
-    .kernel_y_dim = kernel_y_dim,
-    .x_color = x_color,
-  };
-
-  const even_params = @concat_structs(common_params, .{
-    .send_east_color = ax_color_1, .recv_west_color = ax_color_2
-  });
-
-  const odd_params = @concat_structs(common_params, .{
-    .send_east_color = ax_color_2, .recv_west_color = ax_color_1
-  });
-
   for (@range(i16, kernel_x_dim)) |pe_x| {
     for (@range(i16, kernel_y_dim)) |pe_y| {
       if (pe_x % 2 == 0) {
-        @set_tile_code(pe_x, pe_y, "pe_program.csl", @concat_structs(
-          .{ .memcpy_params = memcpy.get_params(pe_x) }, even_params));
+        @set_tile_code(pe_x, pe_y, "pe_program.csl", .{
+          .memcpy_params = memcpy.get_params(pe_x),
+          .M_per_PE = M / kernel_y_dim,
+          .N_per_PE = N / kernel_x_dim,
+          .kernel_x_dim = kernel_x_dim,
+          .kernel_y_dim = kernel_y_dim,
+          .x_color = x_color,
+          .send_east_color = ax_color_1,
+          .recv_west_color = ax_color_2,
+        });
       } else {
-        @set_tile_code(pe_x, pe_y, "pe_program.csl", @concat_structs(
-          .{ .memcpy_params = memcpy.get_params(pe_x) }, odd_params));
+        @set_tile_code(pe_x, pe_y, "pe_program.csl", .{
+          .memcpy_params = memcpy.get_params(pe_x),
+          .M_per_PE = M / kernel_y_dim,
+          .N_per_PE = N / kernel_x_dim,
+          .kernel_x_dim = kernel_x_dim,
+          .kernel_y_dim = kernel_y_dim,
+          .x_color = x_color,
+          .send_east_color = ax_color_2,
+          .recv_west_color = ax_color_1,
+        });
       }
     }
   }

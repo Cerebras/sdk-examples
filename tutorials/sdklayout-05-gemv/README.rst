@@ -22,8 +22,6 @@ size 4×4.
 
 Below is a visualization of the kernel interface:
 
-.. _fig-gemv-4-by-4-checkerboard:
-
 .. figure:: ./images/gemv-4-by-4.png
     :align: center
     :width: 980 px

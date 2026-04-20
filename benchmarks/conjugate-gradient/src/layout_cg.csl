@@ -113,7 +113,7 @@ layout{
             const memcpyParams = memcpy.get_params(px);
             const stencilParams = stencil.get_params(px, py);
             const reduceParams = reduce.get_params(px, py);
-            var params: comptime_struct = .{
+            var params = .{
                 .memcpyParams = memcpyParams,
                 .reduceParams = reduceParams,
                 .MAX_ZDIM = MAX_ZDIM,

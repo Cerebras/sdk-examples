@@ -40,7 +40,7 @@
 //   7                    16      25                    34
 //   8 exit_task_id       17      26                    35
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 const sys_mod = @import_module("<memcpy/memcpy>", memcpy_params);
 const prt = @import_module("<simprint>");
@@ -64,7 +64,10 @@ var ptr_buf: [*]u32 = &buf;
 
 const buf_dsd = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{num_elems} -> buf[i] });
 
-const out_dsd = @get_dsd(fabout_dsd, .{
+const out_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+  .extent = 1,
+  .output_queue = comm_oq
+} else .{
   .extent = 1,
   .fabric_color = comm,
   .output_queue = comm_oq

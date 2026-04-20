@@ -1,8 +1,16 @@
 Release Notes
 =============
 
-The following are the release notes for the CSL Examples repository,
-``csl-examples``.
+The following are the release notes for the SDK Examples repository,
+``sdk-examples``.
+
+Version 2.10.0
+--------------
+
+- The examples are improved and updated to comply with the SDK version 1.3.0.
+
+- A new tutorial example program has been introduced to demonstrate output
+  queue flush and reuse on WSE-3.
 
 Version 1.4.0
 -------------

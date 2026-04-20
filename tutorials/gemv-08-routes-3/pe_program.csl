@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 // Matrix dimensions
 param M_per_PE: i16;
@@ -86,13 +86,15 @@ fn is_right_col() bool {
 
 task reduce() void {
 
-  const out_dsd = @get_dsd(fabout_dsd, .{
+  const out_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+                    .extent = M_per_PE, .output_queue = send_east_oq
+                  } else .{
                     .fabric_color = send_east_color, .extent = M_per_PE,
                     .output_queue = send_east_oq
                   });
 
   const in_dsd  = @get_dsd(fabin_dsd, .{
-                    .fabric_color = recv_west_color, .extent = M_per_PE,
+                    .extent = M_per_PE,
                     .input_queue = recv_west_iq
                   });
 
@@ -125,7 +127,9 @@ task recv_x(x_val: f32) void {
 // The top row sends x values along x_color to launch recv_x
 fn compute() void {
   if (is_top_row()) {
-    const send_x_dsd = @get_dsd(fabout_dsd, .{
+    const send_x_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+                         .extent = N_per_PE, .output_queue = x_color_oq
+                       } else .{
                          .fabric_color = x_color, .extent = N_per_PE,
                          .output_queue = x_color_oq
                        });
@@ -151,13 +155,10 @@ comptime {
   // which corresponds to recv_x_task_id
   @bind_data_task(recv_x, recv_x_task_id);
 
-  // On WSE-3, we must explicitly initialize input and output queues
-  if (@is_arch("wse3")) {
-    @initialize_queue(send_east_oq, .{ .color = send_east_color });
-    @initialize_queue(recv_west_iq, .{ .color = recv_west_color });
-    @initialize_queue(x_color_oq,   .{ .color = x_color });
-    @initialize_queue(x_color_iq,   .{ .color = x_color });
-  }
+  @initialize_queue(send_east_oq, if (@is_arch("wse3")) .{ .color = send_east_color } else .{});
+  @initialize_queue(recv_west_iq, .{ .color = recv_west_color });
+  @initialize_queue(x_color_oq,   if (@is_arch("wse3")) .{ .color = x_color } else .{});
+  @initialize_queue(x_color_iq,   .{ .color = x_color });
 
   @export_symbol(A_ptr, "A");
   @export_symbol(x_ptr, "x");

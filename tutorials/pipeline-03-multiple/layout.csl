@@ -31,9 +31,6 @@ param size: i16;
 param MEMCPYH2D_DATA_1_ID: i16;
 param MEMCPYD2H_DATA_1_ID: i16;
 
-const MEMCPYH2D_DATA_1: color = @get_color(MEMCPYH2D_DATA_1_ID);
-const MEMCPYD2H_DATA_1: color = @get_color(MEMCPYD2H_DATA_1_ID);
-
 // Colors used for input/ output of core program rectangle
 const Cin: color = @get_color(6);
 const Cout: color = @get_color(7);
@@ -41,8 +38,8 @@ const Cout: color = @get_color(7);
 const memcpy = @import_module("<memcpy/get_params>", .{
     .width = 3,
     .height = 1,
-    .MEMCPYH2D_1 = MEMCPYH2D_DATA_1,
-    .MEMCPYD2H_1 = MEMCPYD2H_DATA_1
+    .MEMCPYH2D_1 = MEMCPYH2D_DATA_1_ID,
+    .MEMCPYD2H_1 = MEMCPYD2H_DATA_1_ID
     });
 
 layout {

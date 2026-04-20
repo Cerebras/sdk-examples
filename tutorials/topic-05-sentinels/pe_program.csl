@@ -44,7 +44,7 @@
 //   ...
 //  43 sentinel_task_id
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 const sys_mod = @import_module("<memcpy/memcpy>", memcpy_params);
 
@@ -70,8 +70,11 @@ const send_result_task_id: control_task_id = @get_control_task_id(sentinel);
 var result = @zeros([1]f32);
 const result_dsd = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{1} -> result[i] });
 
-const out_dsd = @get_dsd(fabout_dsd, .{
-  .fabric_color = sys_mod.MEMCPYD2H_1,
+const out_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+  .extent = 1,
+  .output_queue = d2h_1_oq
+} else .{
+  .fabric_color = @get_color(@bitcast(u16, sys_mod.MEMCPYD2H_1)),
   .extent = 1,
   .output_queue = d2h_1_oq
 });
@@ -91,6 +94,6 @@ comptime {
   // On WSE-3, we must explicitly initialize input and output queues
   if (@is_arch("wse3")) {
     @initialize_queue(main_iq,  .{ .color = main_color });
-    @initialize_queue(d2h_1_oq, .{ .color = sys_mod.MEMCPYD2H_1 });
+    @initialize_queue(d2h_1_oq, .{ .color = @get_color(@bitcast(u16, sys_mod.MEMCPYD2H_1)) });
   }
 }

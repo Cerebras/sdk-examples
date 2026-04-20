@@ -69,10 +69,10 @@ fn fft(f_twiddle: *[N]tensor_type) void {
       c1b = (f_twiddle.*)[offset+1];
 
       if (FP==1){
-        /// Twiddling Factors application to the ODD part of the array (second half)
-        /// Complex number multiplication broken down into Real Add and Mul.
+        // Twiddling Factors application to the ODD part of the array (second half)
+        // Complex number multiplication broken down into Real Add and Mul.
         @fmulh(resultDSD, sourceDSD, c1a);
-        /// Calculate the Real part of the complex multiplication.
+        // Calculate the Real part of the complex multiplication.
         @fmach(real_dstDSD, real_dstDSD, imag_srcDSD, c1b);
         // Calculate the Imaginary part of the complex multiplication.
         @fmach(imag_dstDSD, imag_dstDSD, real_srcDSD, -c1b);

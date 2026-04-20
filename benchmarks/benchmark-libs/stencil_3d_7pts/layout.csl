@@ -32,7 +32,25 @@ const SEND: local_task_id = entrypoints[0];
 const RECV: local_task_id = entrypoints[1];
 const COMM: local_task_id = entrypoints[2];
 
-fn get_params(px:i16, py:i16) comptime_struct {
+const Params = struct {
+    c_recv_west: color,
+    c_send_east: color,
+    c_recv_east: color,
+    c_send_west: color,
+    c_recv_south: color,
+    c_send_north: color,
+    c_recv_north: color,
+    c_send_south: color,
+    SEND: local_task_id,
+    RECV: local_task_id,
+    COMM: local_task_id,
+    first_px: bool,
+    last_px: bool,
+    first_py: bool,
+    last_py: bool,
+};
+
+fn get_params(px:i16, py:i16) Params {
 
     var first_py: bool = (0 == py);
     var last_py: bool = ((height-1) == py);
@@ -98,7 +116,7 @@ fn get_params(px:i16, py:i16) comptime_struct {
         c_send_south = C7;
     }
 
-    return .{
+    return Params{
         .c_recv_west = c_recv_west,
         .c_send_east = c_send_east,
         .c_recv_east = c_recv_east,

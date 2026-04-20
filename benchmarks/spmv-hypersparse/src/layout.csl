@@ -116,7 +116,7 @@ layout {
             const memcpyParams = memcpy.get_params(pcol_id);
             const spmvParams = spmv.get_params(pcol_id, prow_id);
             const reduceParams = reduce.get_params(pcol_id, prow_id);
-            var params: comptime_struct = .{
+            var params = .{
                 .memcpyParams = memcpyParams,
                 .spmvParams = spmvParams,
                 .reduceParams = reduceParams,

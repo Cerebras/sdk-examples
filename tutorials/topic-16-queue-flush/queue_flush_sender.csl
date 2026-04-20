@@ -1,0 +1,175 @@
+// Copyright 2025 Cerebras Systems.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+param memcpy_params;
+// memcpy reserves input/output queue 0 and 1
+const sys_mod = @import_module("<memcpy/memcpy>", memcpy_params);
+
+const tile_config = @import_module("<tile_config>");
+const queue_flush = tile_config.queue_flush;
+const output_queue_config = tile_config.output_queue_config;
+
+const size = 15;
+var data1 = @constants([size]u32, 42);
+var data2 = @constants([size]u32, 43);
+const memDSD = @get_dsd(mem1d_dsd, .{.tensor_access = |i|{size} -> data1[i]});
+
+export var result1: [size]u32;
+export var result2: [size]u32;
+var result1_ptr: [*]u32 = &result1;
+var result2_ptr: [*]u32 = &result2;
+
+const output_queue_id: i16 = 2;
+
+const oq = @get_output_queue(output_queue_id);
+const out_color1 = @get_color(10);
+const out_color2 = @get_color(12);
+// WSE-2 does not bind a color to an output queue.
+// Instead, DSD determines the color.
+// On the contrary, WSE-3 binds a color to an output queue, so
+// fabout_1 and fabout_2 are the same.
+// When fabout_2 is used, oq has reset its color field to out_color2.
+const fabout_1 = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+                       .extent = size, .output_queue = oq
+                     } else .{
+                       .fabric_color = out_color1,
+                       .extent = size, .output_queue = oq
+                     });
+const fabout_2 = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+                       .extent = size, .output_queue = oq
+                     } else .{
+                       .fabric_color = out_color2,
+                       .extent = size, .output_queue = oq
+                     });
+
+
+// the runtime color binding to oq
+var switch_color: i16 = 0;
+
+// `foo` is the teardown handler of output queue `oq`.
+// The purpose of `foo` is to reconfigure the color field of `oq`.
+fn foo() void {
+  // WSE-2 does not support qflush
+  if (@is_arch("wse3")) {
+    // The encoding offset of the queue's color is 4.
+    // @set_config(0x7b82, @get_int(out_color2) << 4);
+    output_queue_config.encode_output_queue(output_queue_id, switch_color);
+    @activate(transmit2_id);
+    // WARNING: necessary, otherwise subsequent T29 can still see it.
+    queue_flush.exit(oq);
+  }
+}
+
+// Normally, we could use the '.activate' field to synchronize
+// the re-configuration of the output queue 'oq'. However, this
+// will trigger a simulator assertion because 'oq' will not be
+// empty when the DSD operation is done. The only way to
+// re-configure 'oq' in this case is with '@queue_flush'.
+const transmit1_id = @get_local_task_id(8);
+task transmit1() void {
+  if (@is_arch("wse3")) {
+    @mov32(fabout_1, memDSD, .{.async = true, .activate = done_transmit1});
+  }else{
+    // WSE-2 does not need to reconfigure the output queue.
+    // It can trigger transmit2 to send `data2`.
+    @mov32(fabout_1, memDSD, .{.async = true, .activate = transmit2});
+  }
+}
+
+const done_transmit1_id = @get_local_task_id(9);
+// transmit1 has pushed data1 into `oq` so we can repurpose oq.
+// `oq` is usually non-empty at the time the microthread terminates.
+task done_transmit1() void {
+  // WSE-2 does not support qflush
+  if (@is_arch("wse3")) {
+    // bind out_color2 to oq
+    switch_color = @get_int(out_color2);
+    // queue_flush() triggers T29 when oq becomes empty, i.e. data1 has been sent out.
+    // T29 calls the handler, foo(), to activate transmit2_id.
+    @queue_flush(oq);
+  }
+}
+
+const transmit2_id = @get_local_task_id(11);
+task transmit2() void {
+  const newMemDSD = @set_dsd_base_addr(memDSD, data2);
+  @mov32(fabout_2, newMemDSD, .{.async = true, .activate = exit});
+}
+
+// RPC: send two data sets, data1 and data2, via different colors but with the same output queue.
+// Here is the sequence on WSE-3:
+// 1. send data1 to output queue `oq` which binds to color `out_color1`.
+// 2. `done_transmit1` is triggered when data1 has been sent to `oq`.
+// 3. `done_transmit1` reconfigures the color field of `oq` and calls `@queue_flush(oq)`.
+// 4. whole data1 has been moved out to the router, i.e. `oq` becomes empty.
+// 5. T29 is triggered because `oq` is empty.
+// 6. T29 calls the handler `foo()`.
+// 7. foo() binds `oq` with `out_color2`.
+// 8. foo() activates transmit2_id to send data2.
+// 9. foo() calls queue_flush.exit() to clear the queue flush state.
+// 10. transmit2_id is triggered to send out data2.
+// 11. transmit2_id send data2 to output queue `oq` which binds to color `out_color2`.
+// 12. exit() is triggered when data2 has been pushed into `oq`.
+//
+// WARNING: now `oq` binds to `out_color2`.
+// If the user wants to switch it back to `out_color1`, queue_flush(oq) must be called again.
+// In addition, the user needs to set `switch_color` back to `out_color1` before calling to
+// queue_flush(oq).
+//
+// WARNING: if the user wants to switch the color back to `out_color1`, it has to be done
+// before calling to sys_mod.unblock_cmd_stream(). Otherwise it is possible that next RPC
+// command could start before `oq` switches the color back to `out_color1`.
+//
+// WSE-2 can map multiple colors to the same output queue, so no need to reconfigure
+// the output queue.
+// Here is the sequence on WSE-2:
+// 1. send data1 to output queue oq via out_color1.
+// 2. transmit2 is triggered when data1 has been sent to oq.
+// 3. transmit2_id is triggered to send out data2.
+// 4. transmit2_id send data2 to output queue oq via color out_color2.
+// 5. exit() is triggered when data2 has been pushed into oq.
+fn launch() void {
+  @activate(transmit1_id);
+}
+
+const exit_id = @get_local_task_id(17);
+task exit() void {
+  // the user must unblock cmd color for every PE
+  sys_mod.unblock_cmd_stream();
+}
+
+
+comptime {
+  @bind_local_task(transmit1, transmit1_id);
+  @bind_local_task(done_transmit1, done_transmit1_id);
+  @bind_local_task(transmit2, transmit2_id);
+  @bind_local_task(exit, exit_id);
+
+  // WSE-2 does not bind an output queue to a color
+  @initialize_queue(oq, if (@is_arch("wse3")) .{ .color = out_color1 } else .{});
+
+  // WSE-2 does not support qflush
+  if (@is_arch("wse3")) {
+    @set_empty_queue_handler(foo, oq);
+  }
+  const R_to_E = .{.rx = .{RAMP}, .tx = .{EAST}};
+  @set_local_color_config(out_color1, .{.routes = R_to_E});
+  @set_local_color_config(out_color2, .{.routes = R_to_E});
+}
+
+comptime {
+  @export_symbol(launch);
+  @export_symbol(result1_ptr, "result1");
+  @export_symbol(result2_ptr, "result2");
+}

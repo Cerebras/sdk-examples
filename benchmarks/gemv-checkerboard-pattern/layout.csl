@@ -61,10 +61,6 @@ param matrix_rows: i16; // Height of matrix
 param matrix_cols: i16; // Width of matrix
 
 // Colors
-const MEMCPYH2D_DATA_1: color = @get_color(MEMCPYH2D_DATA_1_ID);
-const MEMCPYH2D_DATA_2: color = @get_color(MEMCPYH2D_DATA_2_ID);
-const MEMCPYD2H_DATA_1: color = @get_color(MEMCPYD2H_DATA_1_ID);
-
 param x_in:   color;   // color for input X from NORTH to kernel
 param b_in:   color;   // checkerboard pattern, color for input B from WEST to kernel
 param ax_out: color;   // checkerboard pattern, alternate color for passing result towards EAST
@@ -91,24 +87,14 @@ const B_local_dim_y: i16 = B_cols;
 const memcpy = @import_module("<memcpy/get_params>", .{
   .width = kernel_cols,
   .height = kernel_rows,
-  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1,
-  .MEMCPYH2D_2 = MEMCPYH2D_DATA_2,
-  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1
+  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1_ID,
+  .MEMCPYH2D_2 = MEMCPYH2D_DATA_2_ID,
+  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1_ID
 });
 
 layout {
   // @set_rectangle takes width and height arguments in order.
   @set_rectangle(kernel_cols, kernel_rows);
-
-  const same_colors    = .{.x_in=x_in, .recv = b_in,   .send = ax_out };
-  const swapped_colors = .{.x_in=x_in, .recv = ax_out, .send = b_in };
-
-  const dimensions = .{ .A_local_dim_x = A_local_dim_x,
-                        .A_local_dim_y = A_local_dim_y,
-                        .X_local_dim_x = X_local_dim_x,
-                        .X_local_dim_y = X_local_dim_y,
-                        .B_local_dim_x = B_local_dim_x,
-                        .B_local_dim_y = B_local_dim_y };
 
   for (@range(i16, kernel_cols)) |i| {
     for (@range(i16, kernel_rows)) |j| {
@@ -116,15 +102,37 @@ layout {
       const memcpy_params = memcpy.get_params(i);
 
       const last_column: bool = (i == kernel_cols - 1);
-      const dim_memcpy = @concat_structs( .{
-        .memcpy_params = memcpy_params,
-        .last_column = last_column
-      }, dimensions);
 
       if (i % 2 == 1) {
-        @set_tile_code(i, j, "pe.csl", @concat_structs(dim_memcpy, swapped_colors));
+        // odd columns: swapped colors (recv=ax_out, send=b_in)
+        @set_tile_code(i, j, "pe.csl", .{
+          .memcpy_params = memcpy_params,
+          .last_column = last_column,
+          .A_local_dim_x = A_local_dim_x,
+          .A_local_dim_y = A_local_dim_y,
+          .X_local_dim_x = X_local_dim_x,
+          .X_local_dim_y = X_local_dim_y,
+          .B_local_dim_x = B_local_dim_x,
+          .B_local_dim_y = B_local_dim_y,
+          .x_in = x_in,
+          .recv = ax_out,
+          .send = b_in,
+        });
       } else {
-        @set_tile_code(i, j, "pe.csl", @concat_structs(dim_memcpy, same_colors));
+        // even columns: same colors (recv=b_in, send=ax_out)
+        @set_tile_code(i, j, "pe.csl", .{
+          .memcpy_params = memcpy_params,
+          .last_column = last_column,
+          .A_local_dim_x = A_local_dim_x,
+          .A_local_dim_y = A_local_dim_y,
+          .X_local_dim_x = X_local_dim_x,
+          .X_local_dim_y = X_local_dim_y,
+          .B_local_dim_x = B_local_dim_x,
+          .B_local_dim_y = B_local_dim_y,
+          .x_in = x_in,
+          .recv = b_in,
+          .send = ax_out,
+        });
       }
     }
   }

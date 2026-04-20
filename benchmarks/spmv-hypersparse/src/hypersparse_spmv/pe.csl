@@ -23,30 +23,73 @@ param output_queues:[2]u16;
 param dest_dsr_ids:[6]u16;
 param src1_dsr_ids:[6]u16;
 
+// struct {
+//   // fabric params
+//   prows: u16,
+//   pcols: u16,
+//   // local task ids
+//   init: local_task_id,
+//   compute_north: local_task_id,
+//   compute_south: local_task_id,
+//   compute_local: local_task_id,
+//   curr_rx_north_done: local_task_id,
+//   curr_rx_south_done: local_task_id,
+//   tx_north: local_task_id,
+//   tx_south: local_task_id,
+//   rx_north: local_task_id,
+//   rx_south: local_task_id,
+//   rx_west: local_task_id,
+//   rx_east: local_task_id,
+//   tx_west: local_task_id,
+//   tx_east: local_task_id,
+//   // west-east train colors
+//   rx_west_train: color,
+//   rx_east_train: color,
+//   tx_west_train: color,
+//   tx_east_train: color,
+//   // north-south train colors
+//   north_train: color,
+//   south_train: color,
+//   // column position flags
+//   is_first_col: bool,
+//   is_last_col: bool,
+//   // row position flags
+//   is_first_row: bool,
+//   is_second_row: bool,
+//   is_last_row: bool,
+//   is_second_last_row: bool,
+// }
+param spmv_params;
 
-// fabric colors
-param north_train: color;
-param south_train: color;
-param rx_west_train: color;
-param rx_east_train: color;
-param tx_west_train: color;
-param tx_east_train: color;
-
-// local colors
-param init: local_task_id;
-param compute_north: local_task_id;
-param compute_south: local_task_id;
-param compute_local: local_task_id;
-param curr_rx_north_done: local_task_id;
-param curr_rx_south_done: local_task_id;
-param tx_north: local_task_id;
-param tx_south: local_task_id;
-param rx_north: local_task_id;
-param rx_south: local_task_id;
-param tx_west: local_task_id;
-param tx_east: local_task_id;
-param rx_west: local_task_id;
-param rx_east: local_task_id;
+// unpack nested params
+const north_train = spmv_params.north_train;
+const south_train = spmv_params.south_train;
+const rx_west_train = spmv_params.rx_west_train;
+const rx_east_train = spmv_params.rx_east_train;
+const tx_west_train = spmv_params.tx_west_train;
+const tx_east_train = spmv_params.tx_east_train;
+const init = spmv_params.init;
+const compute_north = spmv_params.compute_north;
+const compute_south = spmv_params.compute_south;
+const compute_local = spmv_params.compute_local;
+const curr_rx_north_done = spmv_params.curr_rx_north_done;
+const curr_rx_south_done = spmv_params.curr_rx_south_done;
+const tx_north = spmv_params.tx_north;
+const tx_south = spmv_params.tx_south;
+const rx_north = spmv_params.rx_north;
+const rx_south = spmv_params.rx_south;
+const tx_west = spmv_params.tx_west;
+const tx_east = spmv_params.tx_east;
+const rx_west = spmv_params.rx_west;
+const rx_east = spmv_params.rx_east;
+const pcols = spmv_params.pcols;
+const prows = spmv_params.prows;
+const is_first_col = spmv_params.is_first_col;
+const is_last_col = spmv_params.is_last_col;
+const is_first_row = spmv_params.is_first_row;
+const is_second_row = spmv_params.is_second_row;
+const is_last_row = spmv_params.is_last_row;
+const is_second_last_row = spmv_params.is_second_last_row;
 
 // in matrix params
 param ncols: u32;       // full matrix size x
@@ -59,17 +102,6 @@ param local_vec_sz: u16;            // local vector block size per PE (padded)
 // out vector params
 param local_out_vec_sz: u16;        // local vector block size for final output vector (padded)
 param y_pad_start_row_idx: u16;     // local row idx where padding starts in y
-
-// fabric params
-param pcols: u16;   // fab size x
-param prows: u16;   // fab size y
-
-param is_first_col: bool; // pcol_id == 0
-param is_last_col: bool;  // pcol_id == (pcols - 1)
-param is_first_row: bool; // prow_id == 0
-param is_second_row: bool; // prow_id == 1
-param is_last_row: bool;   // prow_id == (prows - 1)
-param is_second_last_row: bool; // prow_id == (prows - 2)
 
 // The structure of the matrix prepared by the caller
 // The content can be modified for each spmv() call
@@ -252,12 +284,10 @@ const mem1d_west_dsr = @get_dsr(dsr_src1, src1_dsr_ids[5]);
 // 1. compute phase: north and south trains for input vector
 const rx_north_dsd = @get_dsd(fabin_dsd, .{
     .extent = local_vec_sz,                 // fp32 => 1 per wavelet
-    .fabric_color = south_train,
     .input_queue = @get_input_queue(RX_NORTH_Q),
 });
 const rx_south_dsd = @get_dsd(fabin_dsd, .{
     .extent = local_vec_sz,
-    .fabric_color = north_train,
     .input_queue = @get_input_queue(RX_SOUTH_Q),
 });
 const tx_north_dsd = @get_dsd(fabout_dsd, .{
@@ -313,13 +343,11 @@ const tx_east_dsd = @get_dsd(fabout_dsd, .{
 // 2. reduce phase: west and east trains for partial output vectors (sparse: vals + rows)
 const rx_west_dsd = @get_dsd(fabin_dsd, .{
     .extent = 1,
-    .fabric_color = rx_east_train,      // east-train, rx from west
-    .input_queue = @get_input_queue(RX_WEST_Q),
+    .input_queue = @get_input_queue(RX_WEST_Q), // east-train, rx from west
 });
 const rx_east_dsd = @get_dsd(fabin_dsd, .{
     .extent = 1,
-    .fabric_color = rx_west_train,      // west-train, rx from east
-    .input_queue = @get_input_queue(RX_EAST_Q),
+    .input_queue = @get_input_queue(RX_EAST_Q),  // west-train, rx from east
 });
 
 // input vector buf mem DSDs for north and south trains

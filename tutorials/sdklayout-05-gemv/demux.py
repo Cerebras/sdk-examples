@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cerebras.sdk.runtime.sdkruntimepybind import (
+from cerebras.sdk.runtime.sdkruntimepybind import ( # pylint: disable=no-name-in-module
     Edge,
     Route,
     RoutingPosition,

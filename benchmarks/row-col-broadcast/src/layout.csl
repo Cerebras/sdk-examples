@@ -72,7 +72,7 @@ layout{
             const memcpyParams = memcpy.get_params(px);
             const syncParams = sync.get_params(px, py);
 
-            var params: comptime_struct = .{
+            var params = .{
                 .memcpyParams = memcpyParams,
                 .pe_length = pe_length,
 

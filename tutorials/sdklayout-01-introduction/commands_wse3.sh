@@ -2,4 +2,4 @@
 
 set -e
 
-cs_python run.py --arch=wse3
+%python_sdk_paint --arch=wse3

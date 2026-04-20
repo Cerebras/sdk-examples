@@ -19,7 +19,7 @@ import argparse
 
 import numpy as np
 
-from cerebras.sdk.runtime.sdkruntimepybind import (
+from cerebras.sdk.runtime.sdkruntimepybind import ( # pylint: disable=no-name-in-module
     SdkLayout,
     SdkTarget,
     SdkRuntime,
@@ -44,6 +44,12 @@ def main():
       choices=['wse2', 'wse3'],
       default='wse3',
       help='Target WSE architecture (default: wse3)'
+  )
+  parser.add_argument(
+      '--cslc-prefix',
+      type=str,
+      default='',
+      help='Optional path to bin/cslc-driver'
   )
   args = parser.parse_args()
 
@@ -135,7 +141,7 @@ def main():
   ################
   ### Compilation
   ################
-  compile_artifacts = layout.compile(out_prefix='out')
+  compile_artifacts = layout.compile(out_prefix='out', cslc_prefix=args.cslc_prefix)
 
   ##############
   ### Execution

@@ -19,6 +19,24 @@ param pattern: u16;
 param peWidth: u16;
 param peHeight: u16;
 
+const PopModeConfig = struct {
+  always_pop: bool,
+};
+
+const SwitchConfig = struct {
+  pos1: u16,           // bitvector, 0 = invalid
+  pos2: u16,           // bitvector, 0 = invalid
+  pos3: u16,           // bitvector, 0 = invalid
+  ring_mode: bool,
+  current_switch_pos: u16,
+  pop_mode: PopModeConfig,
+};
+
+const RouteConfig = struct {
+  routes: u16,         // combined RX+TX bitvector
+  switches: SwitchConfig,
+};
+
 fn initialSwitchPosition(pattFirst: bool, pattLast: bool) u16 {
   if (pattern == 2) {
     if (pattFirst) {
@@ -35,85 +53,78 @@ fn initialSwitchPosition(pattFirst: bool, pattLast: bool) u16 {
   return 0;
 }
 
-fn computeTxDir(dir: direction, isLast: bool) comptime_struct {
+fn computeTxBits(dir: direction, isLast: bool) u16 {
   if (!isLast) {
-    return .{ dir, RAMP };
+    return directions.dirToTxBits(dir) | directions.TX_RAMP;
   }
-  return .{ RAMP };
+  return directions.TX_RAMP;
 }
 
 // The route when using a single neibhbor is quite different from the route for
 // non-unit neighbors.  The next two functions compute routes for these two
 // cases.
 fn twoPatternRoute(dir: direction, pattFirst: bool, pattLast: bool,
-    isLast: bool) comptime_struct {
-  return .{
-    .routes= .{
-        .rx = .{ RAMP },
-        .tx = computeTxDir(dir, isLast),
-    },
-    .switches=.{
-        .pos1 = .{ .tx = RAMP },
-        .pos2 = .{ .rx = directions.flip(dir) },
+    isLast: bool) RouteConfig {
+  return RouteConfig{
+    .routes = directions.RX_RAMP | computeTxBits(dir, isLast),
+    .switches = SwitchConfig{
+        .pos1 = directions.TX_RAMP,
+        .pos2 = directions.dirToRxBits(directions.flip(dir)),
+        .pos3 = 0,
         .ring_mode = true,
         .current_switch_pos = initialSwitchPosition(pattFirst, pattLast, 2),
-        .pop_mode = .{ .always_pop = true },
+        .pop_mode = PopModeConfig{ .always_pop = true },
     },
   };
 }
 
 fn genericRoute(dir: direction, notNeedsPos3: bool, pattFirst: bool,
-    pattLast: bool, isLast: bool) comptime_struct {
+    pattLast: bool, isLast: bool) RouteConfig {
   // The first `pattern - 1` PEs always forward, unless they're at the edge.
-  const baseRoute: comptime_struct = .{
-    .routes= .{
-        .rx = .{ directions.flip(dir) },
-        .tx = computeTxDir(dir, isLast),
-    },
-    .switches=.{
-        .pos1 = .{ .rx = RAMP },
-        .pos2 = .{ .tx = RAMP },
-        .ring_mode = true,
-        .pop_mode = .{ .always_pop = true },
-    }
-  };
+  const rxBits = directions.dirToRxBits(directions.flip(dir));
+  const txBits = computeTxBits(dir, isLast);
 
   if (notNeedsPos3) {
-    return baseRoute;
+    return RouteConfig{
+      .routes = rxBits | txBits,
+      .switches = SwitchConfig{
+          .pos1 = directions.RX_RAMP,
+          .pos2 = directions.TX_RAMP,
+          .pos3 = 0,
+          .ring_mode = true,
+          .current_switch_pos = 0,
+          .pop_mode = PopModeConfig{ .always_pop = true },
+      }
+    };
   }
 
-  const pos3Route: comptime_struct = .{
-    .routes= .{
-        .rx = .{ directions.flip(dir) },
-        .tx = computeTxDir(dir, isLast),
-    },
-    .switches=.{
-        .pos1 = .{ .rx = RAMP },
-        .pos2 = .{ .tx = RAMP },
-        .pos3 = .{ .rx = directions.flip(dir) },
+  return RouteConfig{
+    .routes = rxBits | txBits,
+    .switches = SwitchConfig{
+        .pos1 = directions.RX_RAMP,
+        .pos2 = directions.TX_RAMP,
+        .pos3 = directions.dirToRxBits(directions.flip(dir)),
         .ring_mode = true,
         .current_switch_pos = initialSwitchPosition(pattFirst, pattLast),
-        .pop_mode = .{ .always_pop = true },
+        .pop_mode = PopModeConfig{ .always_pop = true },
     }
   };
-
-  return pos3Route;
 }
 
 // This is the top-level function for computing the routes and switches.
 fn computeRoute(dir: direction, isFirst: bool, isLast: bool, notNeedsPos3: bool,
-    pattFirst: bool, pattLast: bool) comptime_struct {
+    pattFirst: bool, pattLast: bool) RouteConfig {
   if (isFirst) {
     // The first PE only sends, never receives.
-    return .{
-      .routes= .{
-          .rx = .{ RAMP },
-          .tx = .{ dir, RAMP },
-      },
-      .switches=.{
-          .pos1 = .{ .tx = RAMP },
+    return RouteConfig{
+      .routes = directions.RX_RAMP | directions.dirToTxBits(dir) | directions.TX_RAMP,
+      .switches = SwitchConfig{
+          .pos1 = directions.TX_RAMP,
+          .pos2 = 0,
+          .pos3 = 0,
           .ring_mode = true,
-          .pop_mode = .{ .always_pop = true },
+          .current_switch_pos = 0,
+          .pop_mode = PopModeConfig{ .always_pop = true },
       }
     };
   }

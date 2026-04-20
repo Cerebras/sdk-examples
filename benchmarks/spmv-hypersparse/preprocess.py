@@ -186,7 +186,7 @@ def preprocess(
         # Aij(row_l,col_l) is nonzero
         pos = local_pos[(row_b, col_b)]
         y_rows[(row_b, col_b, pos)] = row_l
-        local_pos[(row_b, col_b)] = (pos + 1)  # advance to next nonzero row in Aij
+        local_pos[(row_b, col_b)] = pos + 1  # advance to next nonzero row in Aij
         counted[col_b] = check_token
 
   # step 5: compute A_colloc, A_colidx, A_colen and A_rows
@@ -226,8 +226,8 @@ def preprocess(
         # A_colloc[j] = A_colloc[j-1] + A_colen[j-1]
         if pos > 0:
           A_colloc[(row_b, col_b,
-                    pos)] = (A_colloc[(row_b, col_b, pos - 1)] + A_collen[(row_b, col_b, pos - 1)])
-        local_pos[(row_b, col_b)] = (pos + 1)  # advance to next nonzero column in Aij
+                    pos)] = A_colloc[(row_b, col_b, pos - 1)] + A_collen[(row_b, col_b, pos - 1)]
+        local_pos[(row_b, col_b)] = pos + 1  # advance to next nonzero column in Aij
         counted[row_b] = check_token
       # else:
       #   "pos" is still current position of nonzero column index in A_colen
@@ -249,7 +249,7 @@ def preprocess(
       y_rows_list = list(y_rows[(row_b, col_b)])
       A_rows[(row_b, col_b, pos_rowidx)] = y_rows_list.index(row_l)
       A_vals[(row_b, col_b, pos_rowidx)] = val
-      A_collen[(row_b, col_b, pos)] = (pos_rel_rowidx + 1)  # move to next nonzero Aij(row_l, col_l)
+      A_collen[(row_b, col_b, pos)] = pos_rel_rowidx + 1  # move to next nonzero Aij(row_l, col_l)
 
   matrix_info = {}
   matrix_info["nrows"] = nrows  # number of rows of the matrix

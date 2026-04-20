@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Not a complete program; the top-level source file is layout.csl.
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 param size: i16;
 

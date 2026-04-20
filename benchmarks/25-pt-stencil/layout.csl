@@ -87,44 +87,6 @@ param srcX: u16;
 param srcY: u16;
 param srcZ: u16;
 
-// The following parameters are the same for every PE, so we extract them out of
-// the loop that sets PE-specific parameters below.
-const invariants = .{
-  .send = send,
-  .zDim = zDim,
-  .pattern = pattern,
-  .sourceLength = sourceLength,
-  .dx = dx,
-  .width = width,
-  .height = height,
-  .srcZ = srcZ,
-
-  .eastFin = eastFin,
-  .westFin = westFin,
-  .northFin = northFin,
-  .southFin = southFin,
-
-  .eastDataFin = eastDataFin,
-  .westDataFin = westDataFin,
-  .northDataFin = northDataFin,
-  .southDataFin = southDataFin,
-
-  .eastCtrlFin = eastCtrlFin,
-  .westCtrlFin = westCtrlFin,
-  .northCtrlFin = northCtrlFin,
-  .southCtrlFin = southCtrlFin,
-
-  .eastCtrlFin2 = eastCtrlFin2,
-  .westCtrlFin2 = westCtrlFin2,
-  .northCtrlFin2 = northCtrlFin2,
-  .southCtrlFin2 = southCtrlFin2,
-
-  .eastChannel = eastChannel,
-  .westChannel = westChannel,
-  .northChannel = northChannel,
-  .southChannel = southChannel,
-};
-
 const util = @import_module("util.csl");
 
 const memcpy = @import_module( "<memcpy/get_params>", .{
@@ -179,8 +141,6 @@ layout {
       .eastSenderCount = util.min(pattern, eastPeId + 1),
     };
 
-    const hParams = @concat_structs(westParams, eastParams);
-
     var yId = 0;
     while (yId < height) : (yId += 1) {
 
@@ -209,27 +169,52 @@ layout {
         .southSenderCount = util.min(pattern, southPeId + 1),
       };
 
-      const vParams = @concat_structs(northParams, southParams);
-      const dirParams = @concat_structs(hParams, vParams);
-      const baseParams = @concat_structs(invariants, dirParams);
-
-      const params = @concat_structs(.{
-        .isSourcePe = xId == srcX and yId == srcY,
-        .isTscOutPe = xId == width - 1 and yId == 0,
-      }, baseParams);
-
-
-      // additional colors for memcpy
-      const params_task = @concat_structs( .{
-            .COMP = COMP,
-            ._px=xId,
-      }, params);
-
       const memcpyParams = memcpy.get_params(xId);
 
-      @set_tile_code(xId, yId, "task.csl", @concat_structs( .{
-            .memcpyParams = memcpyParams,
-      }, params_task));
+      @set_tile_code(xId, yId, "task.csl", .{
+        .memcpyParams = memcpyParams,
+
+        .COMP = COMP,
+        ._px = xId,
+        .isSourcePe = xId == srcX and yId == srcY,
+        .isTscOutPe = xId == width - 1 and yId == 0,
+
+        // invariant parameters
+        .send = send,
+        .zDim = zDim,
+        .pattern = pattern,
+        .sourceLength = sourceLength,
+        .dx = dx,
+        .width = width,
+        .height = height,
+        .srcZ = srcZ,
+        .eastFin = eastFin,
+        .westFin = westFin,
+        .northFin = northFin,
+        .southFin = southFin,
+        .eastDataFin = eastDataFin,
+        .westDataFin = westDataFin,
+        .northDataFin = northDataFin,
+        .southDataFin = southDataFin,
+        .eastCtrlFin = eastCtrlFin,
+        .westCtrlFin = westCtrlFin,
+        .northCtrlFin = northCtrlFin,
+        .southCtrlFin = southCtrlFin,
+        .eastCtrlFin2 = eastCtrlFin2,
+        .westCtrlFin2 = westCtrlFin2,
+        .northCtrlFin2 = northCtrlFin2,
+        .southCtrlFin2 = southCtrlFin2,
+        .eastChannel = eastChannel,
+        .westChannel = westChannel,
+        .northChannel = northChannel,
+        .southChannel = southChannel,
+
+        // directional parameters
+        .west = westParams,
+        .east = eastParams,
+        .north = northParams,
+        .south = southParams,
+      });
 
     }
   }

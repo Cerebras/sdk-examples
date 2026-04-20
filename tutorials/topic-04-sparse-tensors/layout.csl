@@ -44,15 +44,11 @@
 param MEMCPYH2D_DATA_1_ID: i16;
 param MEMCPYD2H_DATA_1_ID: i16;
 
-// Colors
-const MEMCPYH2D_DATA_1: color = @get_color(MEMCPYH2D_DATA_1_ID);
-const MEMCPYD2H_DATA_1: color = @get_color(MEMCPYD2H_DATA_1_ID);
-
 const memcpy = @import_module("<memcpy/get_params>", .{
   .width = 1,
   .height = 1,
-  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1,
-  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1
+  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1_ID,
+  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1_ID
 });
 
 layout {

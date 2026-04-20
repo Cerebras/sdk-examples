@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cerebras.geometry.geometry import IntRectangle, IntVector
-from cerebras.sdk.runtime.sdkruntimepybind import (
+from cerebras.geometry.geometry import IntRectangle, IntVector # pylint: disable=no-name-in-module
+from cerebras.sdk.runtime.sdkruntimepybind import ( # pylint: disable=no-name-in-module
     Color,
     Edge,
     Route,

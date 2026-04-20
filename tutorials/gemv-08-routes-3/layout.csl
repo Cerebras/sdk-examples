@@ -39,30 +39,30 @@ layout {
   @comptime_assert(M % kernel_y_dim == 0);
   @comptime_assert(N % kernel_x_dim == 0);
 
-  const common_params = .{
-    .M_per_PE = M / kernel_y_dim,
-    .N_per_PE = N / kernel_x_dim,
-    .kernel_x_dim = kernel_x_dim,
-    .kernel_y_dim = kernel_y_dim,
-    .x_color = x_color
-  };
-
-  const even_params = @concat_structs(common_params, .{
-    .send_east_color = ax_color_1, .recv_west_color = ax_color_2
-  });
-
-  const odd_params = @concat_structs(common_params, .{
-    .send_east_color = ax_color_2, .recv_west_color = ax_color_1
-  });
-
   for (@range(i16, kernel_x_dim)) |pe_x| {
     for (@range(i16, kernel_y_dim)) |pe_y| {
       if (pe_x % 2 == 0) {
-        @set_tile_code(pe_x, pe_y, "pe_program.csl", @concat_structs(
-          .{ .memcpy_params = memcpy.get_params(pe_x) }, even_params));
+        @set_tile_code(pe_x, pe_y, "pe_program.csl", .{
+          .memcpy_params = memcpy.get_params(pe_x),
+          .M_per_PE = M / kernel_y_dim,
+          .N_per_PE = N / kernel_x_dim,
+          .kernel_x_dim = kernel_x_dim,
+          .kernel_y_dim = kernel_y_dim,
+          .x_color = x_color,
+          .send_east_color = ax_color_1,
+          .recv_west_color = ax_color_2,
+        });
       } else {
-        @set_tile_code(pe_x, pe_y, "pe_program.csl", @concat_structs(
-          .{ .memcpy_params = memcpy.get_params(pe_x) }, odd_params));
+        @set_tile_code(pe_x, pe_y, "pe_program.csl", .{
+          .memcpy_params = memcpy.get_params(pe_x),
+          .M_per_PE = M / kernel_y_dim,
+          .N_per_PE = N / kernel_x_dim,
+          .kernel_x_dim = kernel_x_dim,
+          .kernel_y_dim = kernel_y_dim,
+          .x_color = x_color,
+          .send_east_color = ax_color_2,
+          .recv_west_color = ax_color_1,
+        });
       }
     }
   }

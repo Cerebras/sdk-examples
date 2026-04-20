@@ -42,13 +42,12 @@ const y_hi: f32 = 1.5;
 const rows_per_pe = image_height / rectangle_size;
 
 // Colors
-const MEMCPYD2H_DATA_1: color = @get_color(MEMCPYD2H_DATA_1_ID);
 const routing_colors = [2]color { @get_color(2), @get_color(3) };
 
 const memcpy = @import_module( "<memcpy/get_params>", .{
   .width = rectangle_size,
   .height = rectangle_size,
-  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1,
+  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1_ID,
 });
 
 layout {

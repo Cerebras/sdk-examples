@@ -13,8 +13,8 @@
 // limitations under the License.
 
 param size: u16;
-param in_color: color;
-param out_color: color;
+param in_color: u16;
+param out_color: u16;
 param entry_point: u16;
 param has_sentinel: u16;
 
@@ -24,15 +24,15 @@ const input_q = @get_input_queue(0);
 const output_q = @get_output_queue(0);
 
 const inDSD = @get_dsd(fabin_dsd, .{.extent = size,
-                                    .fabric_color = in_color,
+                                    .fabric_color = @get_color(in_color),
                                     .input_queue = input_q});
 
 const outDSD = @get_dsd(fabout_dsd, .{.extent = size,
-                                      .fabric_color = out_color,
+                                      .fabric_color = @get_color(out_color),
                                       .output_queue = output_q});
 
 const ctrlOurDSD = @get_dsd(fabout_dsd, .{.extent = 1,
-                                          .fabric_color = out_color,
+                                          .fabric_color = @get_color(out_color),
                                           .output_queue = output_q,
                                           .control = true});
 
@@ -58,8 +58,8 @@ comptime {
   @bind_local_task(send_sentinel, send_sentinel_id);
   @activate(main_id);
 
-  @initialize_queue(input_q, .{.color = in_color});
+  @initialize_queue(input_q, .{.color = @get_color(in_color)});
   if (@is_arch("wse3")) {
-    @initialize_queue(output_q, .{.color = out_color});
+    @initialize_queue(output_q, .{.color = @get_color(out_color)});
   }
 }

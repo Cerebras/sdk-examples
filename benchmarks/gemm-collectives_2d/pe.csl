@@ -23,8 +23,8 @@
 // each PE computes `C_tile += Ap * Bp` where `Ap` and `Bp` are pointers to
 // either the PE's home tile or the tile it received through broadcasts.
 
-param c2d_params: comptime_struct;
-param memcpy_params: comptime_struct;
+param c2d_params;
+param memcpy_params;
 
 // Matrix size params
 param Mt: i16;

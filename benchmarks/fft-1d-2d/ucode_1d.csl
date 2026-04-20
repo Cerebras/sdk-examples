@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpyParams: comptime_struct;
+param memcpyParams;
 
 // Task IDs
 const EXIT: local_task_id = @get_local_task_id(10);

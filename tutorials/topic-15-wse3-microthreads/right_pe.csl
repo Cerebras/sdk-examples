@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 param recv_color: color;
 
@@ -33,8 +33,7 @@ var y_ptr: [*]f32 = &y;
 
 fn compute() void {
   const in_dsd = @get_dsd(fabin_dsd, .{
-                   .fabric_color = recv_color, .extent = M,
-                   .input_queue = recv_color_iq
+                   .extent = M, .input_queue = recv_color_iq
                  });
   @fmovs(y_dsd, in_dsd, .{ .async = true, .ut_id = recv_color_ut,
                            .activate = exit_task_id });

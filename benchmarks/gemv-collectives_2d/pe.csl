@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpy_params: comptime_struct;
-param c2d_params: comptime_struct;
+param memcpy_params;
+param c2d_params;
 
 // Size of our local tile of `A`
 param Mt: u16; // Height of local matrix, or num rows per PE

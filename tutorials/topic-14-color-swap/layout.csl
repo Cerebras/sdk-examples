@@ -32,14 +32,13 @@ param MEMCPYH2D_DATA_1_ID: i16;
 param width: u16;
 
 // Colors
-const MEMCPYH2D_DATA_1: color = @get_color(MEMCPYH2D_DATA_1_ID);
 const red:              color = @get_color(0);
 const blue:             color = @get_color(1);
 
 const memcpy = @import_module("<memcpy/get_params>", .{
   .width = width,
   .height = 1,
-  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1,
+  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1_ID,
 });
 
 layout {

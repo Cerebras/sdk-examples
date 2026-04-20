@@ -19,7 +19,7 @@ param USER_IN_2 = {};
 // receive data from the "core"
 param USER_OUT_1 = {};
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 const edge_mod = @import_module("memcpy_edge.csl", .{
   .memcpy_params = memcpy_params,

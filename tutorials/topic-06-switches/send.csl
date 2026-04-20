@@ -40,7 +40,7 @@
 //   7                    16       25                    34
 //   8                    17       26                    35
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 // Colors
 param tx_color: color;
@@ -52,7 +52,11 @@ const sys_mod = @import_module("<memcpy/memcpy>", memcpy_params);
 const ctrl = @import_module("<control>");
 
 // fabout DSD used to send ctrl wavelet to fabric along tx_color
-const tx_ctrl_dsd = @get_dsd(fabout_dsd, .{
+const tx_ctrl_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+  .extent = 1,
+  .control = true,
+  .output_queue = tx_oq
+} else .{
   .extent = 1,
   .fabric_color = tx_color,
   .control = true,
@@ -60,7 +64,10 @@ const tx_ctrl_dsd = @get_dsd(fabout_dsd, .{
 });
 
 // fabout DSD used to send data to fabric along tx_color
-const tx_data_dsd = @get_dsd(fabout_dsd, .{
+const tx_data_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+  .extent = 1,
+  .output_queue = tx_oq
+} else .{
   .extent = 1,
   .fabric_color = tx_color,
   .output_queue = tx_oq

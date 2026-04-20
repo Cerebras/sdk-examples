@@ -17,7 +17,7 @@
 
 import argparse
 
-from cerebras.sdk.runtime.sdkruntimepybind import (
+from cerebras.sdk.runtime.sdkruntimepybind import ( # pylint: disable=no-name-in-module
     SdkRuntime,
     SdkTarget,
     SdkLayout,
@@ -32,6 +32,12 @@ parser.add_argument(
     choices=['wse2', 'wse3'],
     default='wse3',
     help='Target WSE architecture (default: wse3)'
+)
+parser.add_argument(
+    '--cslc-prefix',
+    type=str,
+    default='',
+    help='Optional path to bin/cslc-driver'
 )
 args = parser.parse_args()
 
@@ -53,7 +59,7 @@ code = layout.create_code_region('./gv.csl', 'gv', 1, 1)
 code.set_param_all('value', value)
 # Compile the layout and use 'out' as the prefix for all
 # produced artifacts.
-compile_artifacts = layout.compile(out_prefix='out')
+compile_artifacts = layout.compile(out_prefix='out', cslc_prefix=args.cslc_prefix)
 
 ############
 ### Runtime

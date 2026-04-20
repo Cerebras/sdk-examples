@@ -62,40 +62,39 @@ layout {
   // step 2: compile csl code for a set of PEx.y and generate out_x_y.elf
   //   format: @set_tile_code(x, y, code.csl, param_binding);
 
-  const comm_params = .{
+  @set_tile_code(0, 0, "residual.csl", .{
+    .memcpy_params = memcpy.get_params(0),
+    .TXACT_X = RXACT_X,
+    .TXACT_Y = PSUM,
     .LOCAL_OUT_SZ = LOCAL_OUT_SZ,
-    .LOCAL_IN_SZ = LOCAL_IN_SZ
-  };
+    .LOCAL_IN_SZ = LOCAL_IN_SZ,
+  });
 
-  const route_00 = .{
-    .memcpy_params = memcpy.get_params(0),
-    .TXACT_X = RXACT_X,
-    .TXACT_Y = PSUM
-  };
-  @set_tile_code(0, 0, "residual.csl", @concat_structs(route_00, comm_params));
-
-  const route_01 = .{
+  @set_tile_code(0, 1, "residual.csl", .{
     .memcpy_params = memcpy.get_params(0),
     .RXACT_X = RXACT_X,
-    .TXACT_Y = PSUM
-  };
-  @set_tile_code(0, 1, "residual.csl", @concat_structs(route_01, comm_params));
+    .TXACT_Y = PSUM,
+    .LOCAL_OUT_SZ = LOCAL_OUT_SZ,
+    .LOCAL_IN_SZ = LOCAL_IN_SZ,
+  });
 
-  const route_10 = .{
+  @set_tile_code(1, 0, "residual.csl", .{
     .memcpy_params = memcpy.get_params(1),
     .TXACT_X = RXACT_X,
     .RXACT_Y = PSUM,
-    .RXACT_NRM = NRM
-  };
-  @set_tile_code(1, 0, "residual.csl", @concat_structs(route_10, comm_params));
+    .RXACT_NRM = NRM,
+    .LOCAL_OUT_SZ = LOCAL_OUT_SZ,
+    .LOCAL_IN_SZ = LOCAL_IN_SZ,
+  });
 
-  const route_11 = .{
+  @set_tile_code(1, 1, "residual.csl", .{
     .memcpy_params = memcpy.get_params(1),
     .RXACT_X = RXACT_X,
     .RXACT_Y = PSUM,
-    .TXACT_NRM = NRM
-  };
-  @set_tile_code(1, 1, "residual.csl", @concat_structs(route_11, comm_params));
+    .TXACT_NRM = NRM,
+    .LOCAL_OUT_SZ = LOCAL_OUT_SZ,
+    .LOCAL_IN_SZ = LOCAL_IN_SZ,
+  });
 
   // step 3: global and internal routing
   //  format: @set_color_config(x, y, color, route);

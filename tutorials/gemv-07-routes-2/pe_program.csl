@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 // Matrix dimensions
 param M_per_PE: i16;
@@ -77,7 +77,9 @@ fn is_left_col() bool {
 
 task reduce() void {
   if (is_left_col()) {
-    const out_dsd = @get_dsd(fabout_dsd, .{
+    const out_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+                      .extent = M_per_PE, .output_queue = ax_color_oq
+                    } else .{
                       .fabric_color = ax_color, .extent = M_per_PE,
                       .output_queue = ax_color_oq
                     });
@@ -86,7 +88,7 @@ task reduce() void {
 
   } else {
     const in_dsd = @get_dsd(fabin_dsd, .{
-                     .fabric_color = ax_color, .extent = M_per_PE,
+                     .extent = M_per_PE,
                      .input_queue  = ax_color_iq
                    });
     // After fadds is done, activate exit_task to unblock cmd stream
@@ -113,7 +115,9 @@ task recv_x(x_val: f32) void {
 // The top row sends x values along x_color to launch recv_x
 fn compute() void {
   if (is_top_row()) {
-    const send_x_dsd = @get_dsd(fabout_dsd, .{
+    const send_x_dsd = @get_dsd(fabout_dsd, if (@is_arch("wse3")) .{
+                         .extent = N_per_PE, .output_queue = x_color_oq
+                       } else .{
                          .fabric_color = x_color, .extent = N_per_PE,
                          .output_queue = x_color_oq
                        });
@@ -139,13 +143,10 @@ comptime {
   // On WSE-3, these wavelets are received in input queue x_color_iq
   @bind_data_task(recv_x, recv_x_task_id);
 
-  // On WSE-3, we must explicitly initialize input and output queues
-  if (@is_arch("wse3")) {
-    @initialize_queue(ax_color_oq, .{ .color = ax_color });
-    @initialize_queue(ax_color_iq, .{ .color = ax_color });
-    @initialize_queue(x_color_oq,  .{ .color = x_color });
-    @initialize_queue(x_color_iq,  .{ .color = x_color });
-  }
+  @initialize_queue(ax_color_oq, if (@is_arch("wse3")) .{ .color = ax_color } else .{});
+  @initialize_queue(ax_color_iq, .{ .color = ax_color });
+  @initialize_queue(x_color_oq,  if (@is_arch("wse3")) .{ .color = x_color } else .{});
+  @initialize_queue(x_color_iq,  .{ .color = x_color });
 
   @export_symbol(A_ptr, "A");
   @export_symbol(x_ptr, "x");

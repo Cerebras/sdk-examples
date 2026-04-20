@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpyParams: comptime_struct;
+param memcpyParams;
 
 // Colors
 const LR_color: color = @get_color(4);
@@ -113,22 +113,34 @@ const sendRightData_dsd = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{TRANS_LEN}
 
 // Here we send elements from N-2 to 0. Once again, technically only elements from PE_X-1 to 0 are necessary.
 // Therefore, each PE sends N-1 elements on each color.
-const sendLR_dsd = @get_dsd(fabout_dsd, .{ .extent = TRANS_LEN, .fabric_color = LR_color,
-                                           .output_queue = LR_send_oq });
-const sendRL_dsd = @get_dsd(fabout_dsd, .{ .extent = TRANS_LEN, .fabric_color = RL_color,
-                                           .output_queue = RL_send_oq });
+const sendLR_dsd = @get_dsd(fabout_dsd,
+                            if (@is_arch("wse3")) .{ .extent = TRANS_LEN,
+                                                     .output_queue = LR_send_oq }
+                            else .{ .extent = TRANS_LEN, .fabric_color = LR_color,
+                                    .output_queue = LR_send_oq });
+const sendRL_dsd = @get_dsd(fabout_dsd,
+                            if (@is_arch("wse3")) .{ .extent = TRANS_LEN,
+                                                     .output_queue = RL_send_oq }
+                            else .{ .extent = TRANS_LEN, .fabric_color = RL_color,
+                                    .output_queue = RL_send_oq });
 
 // Each PE receives as many bricks in each direction as PEs are in that direction
-const recvLR_dsd = @get_dsd(fabin_dsd,  .{ .extent = PE_X0*BRICK_WAVELETS, .fabric_color = LR_color,
-                                           .input_queue = LR_recv_iq });
-const recvRL_dsd = @get_dsd(fabin_dsd,  .{ .extent = REV_PE_X*BRICK_WAVELETS, .fabric_color = RL_color,
+const recvLR_dsd = @get_dsd(fabin_dsd,  .{ .extent = PE_X0*BRICK_WAVELETS,
+                                            .input_queue = LR_recv_iq });
+const recvRL_dsd = @get_dsd(fabin_dsd,  .{ .extent = REV_PE_X*BRICK_WAVELETS,
                                            .input_queue = RL_recv_iq });
 
 // DSDs to send control wavelets to advance switches. We need to advance 2 positions, thus send 2 sentinels.
-const sentinelLR_dsd = @get_dsd(fabout_dsd, .{ .extent = 2, .fabric_color = LR_color, .control = true,
-                                               .output_queue = LR_send_oq });
-const sentinelRL_dsd = @get_dsd(fabout_dsd, .{ .extent = 2, .fabric_color = RL_color, .control = true,
-                                               .output_queue = RL_send_oq });
+const sentinelLR_dsd = @get_dsd(fabout_dsd,
+                                if (@is_arch("wse3")) .{ .extent = 2, .control = true,
+                                                         .output_queue = LR_send_oq }
+                                else .{ .extent = 2, .fabric_color = LR_color, .control = true,
+                                        .output_queue = LR_send_oq });
+const sentinelRL_dsd = @get_dsd(fabout_dsd,
+                                if (@is_arch("wse3")) .{ .extent = 2, .control = true,
+                                                         .output_queue = RL_send_oq }
+                                else .{ .extent = 2, .fabric_color = RL_color, .control = true,
+                                        .output_queue = RL_send_oq });
 
 // DSD describing the DSD that contains the payload of the control wavelets.
 const sentinelData_dsd = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{2} -> sentinel_data[i]});
@@ -309,13 +321,10 @@ comptime {
                           });
   }
 
-  // On WSE-3, we must explicitly initialize input and output queues
-  if (@is_arch("wse3")) {
-    @initialize_queue(LR_recv_iq, .{ .color = LR_color });
-    @initialize_queue(LR_send_oq, .{ .color = LR_color });
-    @initialize_queue(RL_recv_iq, .{ .color = RL_color });
-    @initialize_queue(RL_send_oq, .{ .color = RL_color });
-  }
+  @initialize_queue(LR_recv_iq, .{ .color = LR_color });
+  @initialize_queue(LR_send_oq, if (@is_arch("wse3")) .{ .color = LR_color } else .{});
+  @initialize_queue(RL_recv_iq, .{ .color = RL_color });
+  @initialize_queue(RL_send_oq, if (@is_arch("wse3")) .{ .color = RL_color } else .{});
 
   @export_symbol(ptr_X, "X");
   @export_symbol(ptr_f_twiddle, "f_twiddle");

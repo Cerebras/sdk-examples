@@ -1,5 +1,3 @@
-.. _tutorials-sdklayout-04:
-
 SdkLayout 4: Host-to-device and device-to-host data streaming
 =============================================================
 

@@ -105,10 +105,9 @@
       Johns Hopkins
 """
 
+import os
 import random
-import shutil
 import subprocess
-from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -278,7 +277,7 @@ def main():
   assert zDim <= pe_length, "[0, zDim) cannot exceed the storage"
 
   np.random.seed(2)
-  x = (np.arange(height * width * zDim).reshape(height, width, zDim).astype(np.float32) + 100)
+  x = np.arange(height * width * zDim).reshape(height, width, zDim).astype(np.float32) + 100
 
   x_1d = hwl_2_oned_colmajor(height, width, zDim, x, np.float32)
   nrm2_x = np.linalg.norm(x_1d.ravel(), 2)
@@ -405,6 +404,9 @@ def main():
   symbol_stencil_coeff = simulator.get_id("stencil_coeff")
   symbol_time_buf_u16 = simulator.get_id("time_buf_u16")
   symbol_time_ref = simulator.get_id("time_ref")
+
+  # Change to unique directory to avoid sim.log conflicts with other tests.
+  os.chdir(dirname)
 
   simulator.load()
   simulator.run()
@@ -549,20 +551,6 @@ def main():
   )
 
   simulator.stop()
-
-  if args.cmaddr is None:
-    # move simulation log and core dump to the given folder
-    dst_log = Path(f"{dirname}/sim.log")
-    src_log = Path("sim.log")
-    if src_log.exists():
-      shutil.move(src_log, dst_log)
-
-    dst_trace = Path(f"{dirname}/simfab_traces")
-    src_trace = Path("simfab_traces")
-    if dst_trace.exists():
-      shutil.rmtree(dst_trace)
-    if src_trace.exists():
-      shutil.move(src_trace, dst_trace)
 
   timing_analysis(height, width, time_memcpy_hwl, time_ref_hwl)
 

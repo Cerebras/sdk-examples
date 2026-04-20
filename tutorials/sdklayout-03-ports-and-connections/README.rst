@@ -1,5 +1,3 @@
-.. _tutorials-sdklayout-03:
-
 SdkLayout 3: Ports and connections
 ==================================
 

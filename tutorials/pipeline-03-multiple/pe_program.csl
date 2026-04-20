@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 param size: i16;
 
@@ -30,15 +30,10 @@ const sys_mod = @import_module("<memcpy/memcpy>", memcpy_params);
 
 const Cin_in_dsd = @get_dsd(fabin_dsd, .{
   .extent = size,
-  .fabric_color = Cin,
   .input_queue = Cin_iq,
 });
 
-const Cout_out_dsd = @get_dsd(fabout_dsd, .{
-  .extent = size,
-  .fabric_color = Cout,
-  .output_queue = Cout_oq,
-});
+const Cout_out_dsd = sys_mod.get_streaming_fabout_dsd(Cout, size, Cout_oq);
 
 const buf = [1]i16{ 1 };
 const one_dsd = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{size} -> buf[0] });
@@ -55,9 +50,6 @@ comptime {
   @set_local_color_config(Cin, .{ .routes = .{ .rx = .{ WEST }, .tx = .{ RAMP }}});
   @set_local_color_config(Cout, .{ .routes = .{ .rx = .{ RAMP }, .tx = .{ EAST }}});
 
-  // On WSE-3, we must explicitly initialize input and output queues
-  if (@is_arch("wse3")) {
-    @initialize_queue(Cin_iq, .{ .color = Cin });
-    @initialize_queue(Cout_oq, .{ .color = Cout });
-  }
+  @initialize_queue(Cin_iq, .{ .color = Cin });
+  @initialize_queue(Cout_oq, if (@is_arch("wse3")) .{ .color = Cout } else .{});
 }

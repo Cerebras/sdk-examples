@@ -43,10 +43,6 @@
 param MEMCPYH2D_DATA_1_ID: i16;
 param MEMCPYD2H_DATA_1_ID: i16;
 
-// Colors
-const MEMCPYH2D_DATA_1: color = @get_color(MEMCPYH2D_DATA_1_ID); // Recvs input data
-const MEMCPYD2H_DATA_1: color = @get_color(MEMCPYD2H_DATA_1_ID); // Signals completion to host
-
 // The number of bits to use for the result.  Inputs, also, use the same bits.
 // Since overflow, if any, is ignored, set the bits to be large enough so that
 // the computation doesn't overflow for the numbers you care about.
@@ -55,8 +51,8 @@ param num_bits: u16;
 const memcpy = @import_module("<memcpy/get_params>", .{
   .width = 1,
   .height = 1,
-  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1,
-  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1,
+  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1_ID,
+  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1_ID,
 });
 
 layout {

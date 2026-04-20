@@ -1,5 +1,3 @@
-.. _tutorials-sdklayout-02:
-
 SdkLayout 2: Basic routing
 ==========================
 

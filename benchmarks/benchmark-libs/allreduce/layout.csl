@@ -31,7 +31,21 @@ const STATE_ENTRY: local_task_id = entrypoints[2];
 // the operation blocks LOCK in the beginning and unblocks it when it finishes
 const C_LOCK: local_task_id = entrypoints[3];
 
-fn get_params(px:i16, py:i16) comptime_struct {
+const Params = struct {
+    first_px: bool,
+    last_px: bool,
+    first_py: bool,
+    last_py: bool,
+    C_ROUTE: color,
+    C_SEND_CTRL: local_task_id,
+    C_SEND_DATA: local_task_id,
+    C_STATE_ENTRY: local_task_id,
+    C_LOCK: local_task_id,
+    width: i16,
+    height: i16,
+};
+
+fn get_params(px:i16, py:i16) Params {
 
     var first_py: bool = (0 == py);
     var last_py: bool = ((height-1) == py);
@@ -39,7 +53,7 @@ fn get_params(px:i16, py:i16) comptime_struct {
     var first_px: bool = (0 == px);
     var last_px: bool = ((width-1) == px);
 
-    return .{
+    return Params{
         .first_px = first_px,
         .last_px = last_px,
         .first_py = first_py,

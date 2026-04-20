@@ -40,7 +40,7 @@
 //   7                    16      25                    34
 //   8                    17      26                    35
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 param pe_id: u16;
 
 // Colors

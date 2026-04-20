@@ -13,7 +13,7 @@
 // limitations under the License.
 
 param size: u16;
-param tx: color;
+param tx: u16;
 
 const out_q = @get_output_queue(0);
 
@@ -22,7 +22,7 @@ export var data = [10]u16{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 const data_dsd = @get_dsd(mem1d_dsd, .{.tensor_access = |i|{size} -> data[i]});
 
 const output = @get_dsd(fabout_dsd, .{.extent = size,
-                                      .fabric_color = tx,
+                                      .fabric_color = @get_color(tx),
                                       .output_queue = out_q});
 
 const main_id = @get_local_task_id(8);
@@ -35,6 +35,6 @@ comptime {
   @activate(main_id);
 
   if (@is_arch("wse3")) {
-    @initialize_queue(out_q, .{.color = tx});
+    @initialize_queue(out_q, .{.color = @get_color(tx)});
   }
 }

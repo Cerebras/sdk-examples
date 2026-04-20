@@ -89,30 +89,41 @@
 //  LOCK goes to next state (done)
 //
 
-param C_ROUTE: color;
-param C_DISPATCH: color; // routable color to trigger control-wavelet triggered task
-                         // the routing is R --> R
+// struct {
+//   first_px: bool, // (0 == px)
+//   last_px: bool,  // ((width-1) == px)
+//   first_py: bool, // (0 == py)
+//   last_py: bool,  // ((height-1) == py)
+//   C_ROUTE: color,
+//   C_DISPATCH: color, // routable color to trigger control-wavelet triggered task
+//                      // the routing is R --> R
+//   // LOCK runs only if teardown is received and the operation is done
+//   // LOCK performs the state transition
+//   // teardown handler activates LOCK
+//   // the operation blocks LOCK in the beginning and unblocks it when it finishes
+//   C_LOCK: local_task_id,
+//   // row reduction needs to receive width-1 neighbors
+//   // column reduction needs to receive height-1 neighbors
+//   width: i16,
+//   height: i16,
+// }
+param reduce_params;
+
+// unpack nested params
+const C_ROUTE = reduce_params.C_ROUTE;
+const C_DISPATCH = reduce_params.C_DISPATCH;
+const C_LOCK = reduce_params.C_LOCK;
+const first_px = reduce_params.first_px;
+const last_px = reduce_params.last_px;
+const first_py = reduce_params.first_py;
+const last_py = reduce_params.last_py;
+const width = reduce_params.width;
+const height = reduce_params.height;
 
 // C_DISPATCH guides the control-wavelet triggered tasks, it
 // does not bind to a wavelet-triggered task, so it does not
 // bind to an input queue.
 const LOCAL_DISPATCH: local_task_id = @get_local_task_id(@get_int(C_DISPATCH));
-
-// LOCK runs only if teardown is received and the operation is done
-// LOCK performs the state transition
-// teardown handler activates LOCK
-// the operation blocks LOCK in the beginning and unblocks it when it finishes
-param C_LOCK: local_task_id;
-
-param first_px: bool; // (0 == px)
-param last_px: bool;  // ((width-1) == px)
-param first_py: bool; // (0 == py)
-param last_py: bool;  // ((height-1) == py)
-
-// row reduction needs to receive width-1 neighbors
-// column reduction needs to receive height-1 neighbors
-param width: i16;
-param height: i16;
 
 // f_callback = sys_mod.unblock_cmd_stream, to continue next command
 param f_callback: fn ()void;
@@ -357,7 +368,6 @@ const fab_trans_ctrl_wdsd = @get_dsd(fabout_dsd, .{
 //
 var fab_recv_wdsd =  @get_dsd(fabin_dsd, .{
    .extent = MAX_ZDIM,
-   .fabric_color = C_ROUTE,
    .input_queue = @get_input_queue(queues[0])
 });
 

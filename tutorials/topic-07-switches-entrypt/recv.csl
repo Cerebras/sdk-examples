@@ -44,7 +44,7 @@
 //   ...
 //  40 recv_ctrl_id
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 // Colors
 param rx_color: color;

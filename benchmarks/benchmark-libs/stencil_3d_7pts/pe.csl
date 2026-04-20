@@ -12,25 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// struct {
+//   c_recv_west: color,
+//   c_send_east: color,
+//   c_recv_east: color,
+//   c_send_west: color,
+//   c_recv_south: color,
+//   c_send_north: color,
+//   c_recv_north: color,
+//   c_send_south: color,
+//   COMM: local_task_id,  // entrypoint f_comm
+//   SEND: local_task_id,  // entrypoint f_send
+//   RECV: local_task_id,  // entrypoint f_recv
+//   first_px: bool,
+//   last_px: bool,
+//   first_py: bool,
+//   last_py: bool,
+// }
+param stencil_params;
 
-param c_recv_west: color;
-param c_send_east: color;
-param c_recv_east: color;
-param c_send_west: color;
-
-param c_recv_south: color;
-param c_send_north: color;
-param c_recv_north: color;
-param c_send_south: color;
-
-param COMM: local_task_id; // entrypoint f_comm
-param SEND: local_task_id; // entrypoint f_send
-param RECV: local_task_id; // entrypoint f_recv
-
-param first_px: bool;
-param last_px: bool;
-param first_py: bool;
-param last_py: bool;
+// unpack nested params
+const c_recv_west = stencil_params.c_recv_west;
+const c_send_east = stencil_params.c_send_east;
+const c_recv_east = stencil_params.c_recv_east;
+const c_send_west = stencil_params.c_send_west;
+const c_recv_south = stencil_params.c_recv_south;
+const c_send_north = stencil_params.c_send_north;
+const c_recv_north = stencil_params.c_recv_north;
+const c_send_south = stencil_params.c_send_south;
+const COMM = stencil_params.COMM;
+const SEND = stencil_params.SEND;
+const RECV = stencil_params.RECV;
+const first_px = stencil_params.first_px;
+const last_px = stencil_params.last_px;
+const first_py = stencil_params.first_py;
+const last_py = stencil_params.last_py;
 
 // To continue next command, f_callback = sys_mod.unblock_cmd_stream
 param f_callback : fn ()void;

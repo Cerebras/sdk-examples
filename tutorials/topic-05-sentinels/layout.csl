@@ -44,18 +44,14 @@ param size: i16;
 const end_computation: u16 = 43;
 
 // Colors
-const MEMCPYH2D_DATA_1: color = @get_color(MEMCPYH2D_DATA_1_ID);
-const MEMCPYH2D_DATA_2: color = @get_color(MEMCPYH2D_DATA_2_ID);
-const MEMCPYD2H_DATA_1: color = @get_color(MEMCPYD2H_DATA_1_ID);
-
 const main_color: color = @get_color(0);
 
 const memcpy = @import_module("<memcpy/get_params>", .{
   .width = 2,
   .height = size,
-  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1,
-  .MEMCPYH2D_2 = MEMCPYH2D_DATA_2,
-  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1
+  .MEMCPYH2D_1 = MEMCPYH2D_DATA_1_ID,
+  .MEMCPYH2D_2 = MEMCPYH2D_DATA_2_ID,
+  .MEMCPYD2H_1 = MEMCPYD2H_DATA_1_ID
 });
 
 layout {

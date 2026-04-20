@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param memcpy_params: comptime_struct;
+param memcpy_params;
 
 const sys_mod = @import_module("<memcpy/memcpy>", memcpy_params);
 
@@ -25,7 +25,7 @@ const blue_oq: output_queue = @get_output_queue(2);
 
 // Task IDs
 // Task ID for data task that recvs from memcpy
-const h2d_task_id: data_task_id = @get_data_task_id(sys_mod.MEMCPYH2D_1);
+const h2d_task_id: data_task_id = @get_data_task_id(@get_color(@bitcast(u16, sys_mod.MEMCPYH2D_1)));
 
 // Task ID for data task red, consumes red wlts
 const red_task_id: data_task_id = @get_data_task_id(red);

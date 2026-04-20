@@ -23,7 +23,7 @@
 // - launch(1): prepare zout which is either zValues[0, zOffset] or zValues[1, zOffset]
 // - D2H(zout)
 //
-param memcpyParams: comptime_struct;
+param memcpyParams;
 
 // Colors
 param eastChannel:  color;
@@ -157,38 +157,42 @@ var mem_zout_buf_dsd = @get_dsd(mem1d_dsd, .{ .tensor_access = |i|{zDim} -> zout
 //--- END MEMCPY
 
 
-//These are broadcasts stuff
-param westFirst: bool;
-param westLast: bool;
-param westPatternId: u16;
-param westNotNeedsPos3: bool;
-param westPatternFirst: bool;
-param westPatternLast: bool;
-param westSenderCount: u16;
-
-param eastFirst: bool;
-param eastLast: bool;
-param eastPatternId: u16;
-param eastNotNeedsPos3: bool;
-param eastPatternFirst: bool;
-param eastPatternLast: bool;
-param eastSenderCount: u16;
-
-param northFirst: bool;
-param northLast: bool;
-param northPatternId: u16;
-param northNotNeedsPos3: bool;
-param northPatternFirst: bool;
-param northPatternLast: bool;
-param northSenderCount: u16;
-
-param southFirst: bool;
-param southLast: bool;
-param southPatternId: u16;
-param southNotNeedsPos3: bool;
-param southPatternFirst: bool;
-param southPatternLast: bool;
-param southSenderCount: u16;
+param west: struct {
+  westFirst: bool,
+  westLast: bool,
+  westPatternId: u16,
+  westNotNeedsPos3: bool,
+  westPatternFirst: bool,
+  westPatternLast: bool,
+  westSenderCount: u16,
+};
+param east: struct {
+  eastFirst: bool,
+  eastLast: bool,
+  eastPatternId: u16,
+  eastNotNeedsPos3: bool,
+  eastPatternFirst: bool,
+  eastPatternLast: bool,
+  eastSenderCount: u16,
+};
+param north: struct {
+  northFirst: bool,
+  northLast: bool,
+  northPatternId: u16,
+  northNotNeedsPos3: bool,
+  northPatternFirst: bool,
+  northPatternLast: bool,
+  northSenderCount: u16,
+};
+param south: struct {
+  southFirst: bool,
+  southLast: bool,
+  southPatternId: u16,
+  southNotNeedsPos3: bool,
+  southPatternFirst: bool,
+  southPatternLast: bool,
+  southSenderCount: u16,
+};
 
 // Since our code essentially uses the same communication code with parameters
 // for the direction of the communication, we compute the subset of constants
@@ -198,16 +202,16 @@ param southSenderCount: u16;
 // the center element only once, we pass `true` only for the _first_ invocation
 // of this function, while all other values are false.
 const eastConsts = consts.fetchFirstHalfConsts(xConsts, true);
-const permutedEastConsts = consts.permuteConsts(eastPatternId, eastConsts);
+const permutedEastConsts = consts.permuteConsts(east.eastPatternId, eastConsts);
 
 const westConsts = consts.fetchSecondHalfConsts(xConsts, false);
-const permutedWestConsts = consts.permuteConsts(westPatternId, westConsts);
+const permutedWestConsts = consts.permuteConsts(west.westPatternId, westConsts);
 
 const southConsts = consts.fetchFirstHalfConsts(yConsts, false);
-const permutedSouthConsts = consts.permuteConsts(southPatternId, southConsts);
+const permutedSouthConsts = consts.permuteConsts(south.southPatternId, southConsts);
 
 const northConsts = consts.fetchSecondHalfConsts(yConsts, false);
-const permutedNorthConsts = consts.permuteConsts(northPatternId, northConsts);
+const permutedNorthConsts = consts.permuteConsts(north.northPatternId, northConsts);
 
 var accumulator = @zeros([paddedZDim]f32);
 var buffer = @zeros([directionCount, pattern, chunkSize]f32);
@@ -228,7 +232,7 @@ const eastBus = @import_module("oned_exch.csl", .{
   .ctrlFin_task_id = eastCtrlFin,
   .channel = eastChannel,
   .callback = eastFinTask,
-  .senderCount = eastSenderCount,
+  .senderCount = east.eastSenderCount,
   .ctrlCallback = eastCtrlFinTask,
   .constants = &permutedEastConsts,
 });
@@ -247,7 +251,7 @@ const westBus = @import_module("oned_exch.csl", .{
   .ctrlFin_task_id = westCtrlFin,
   .channel = westChannel,
   .callback = westFinTask,
-  .senderCount = westSenderCount,
+  .senderCount = west.westSenderCount,
   .ctrlCallback = westCtrlFinTask,
   .constants = &permutedWestConsts,
 });
@@ -266,7 +270,7 @@ const southBus = @import_module("oned_exch.csl", .{
   .ctrlFin_task_id = southCtrlFin,
   .channel = southChannel,
   .callback = southFinTask,
-  .senderCount = southSenderCount,
+  .senderCount = south.southSenderCount,
   .ctrlCallback = southCtrlFinTask,
   .constants = &permutedSouthConsts,
 });
@@ -285,7 +289,7 @@ const northBus = @import_module("oned_exch.csl", .{
   .ctrlFin_task_id = northCtrlFin,
   .channel = northChannel,
   .callback = northFinTask,
-  .senderCount = northSenderCount,
+  .senderCount = north.northSenderCount,
   .ctrlCallback = northCtrlFinTask,
   .constants = &permutedNorthConsts,
 });
@@ -690,26 +694,26 @@ comptime {
 
   @bind_local_task(eastFinTask, eastFin);
 
-  const eastRoute = routes.computeRoute(EAST, eastFirst, eastLast,
-      eastNotNeedsPos3, eastPatternFirst, eastPatternLast);
+  const eastRoute = routes.computeRoute(EAST, east.eastFirst, east.eastLast,
+      east.eastNotNeedsPos3, east.eastPatternFirst, east.eastPatternLast);
   @set_local_color_config(eastChannel, eastRoute);
 
   @bind_local_task(westFinTask, westFin);
 
-  const westRoute = routes.computeRoute(WEST, westFirst, westLast,
-      westNotNeedsPos3, westPatternFirst, westPatternLast);
+  const westRoute = routes.computeRoute(WEST, west.westFirst, west.westLast,
+      west.westNotNeedsPos3, west.westPatternFirst, west.westPatternLast);
   @set_local_color_config(westChannel, westRoute);
 
   @bind_local_task(southFinTask, southFin);
 
-  const southRoute = routes.computeRoute(SOUTH, southFirst, southLast,
-      southNotNeedsPos3, southPatternFirst, southPatternLast);
+  const southRoute = routes.computeRoute(SOUTH, south.southFirst, south.southLast,
+      south.southNotNeedsPos3, south.southPatternFirst, south.southPatternLast);
   @set_local_color_config(southChannel, southRoute);
 
   @bind_local_task(northFinTask, northFin);
 
-  const northRoute = routes.computeRoute(NORTH, northFirst, northLast,
-      northNotNeedsPos3, northPatternFirst, northPatternLast);
+  const northRoute = routes.computeRoute(NORTH, north.northFirst, north.northLast,
+      north.northNotNeedsPos3, north.northPatternFirst, north.northPatternLast);
   @set_local_color_config(northChannel, northRoute);
 
   @bind_local_task(eastCtrlFinTask, eastCtrlFin2);

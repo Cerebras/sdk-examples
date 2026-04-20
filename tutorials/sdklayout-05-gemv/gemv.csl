@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-param x_in: color;
-param b_in: color;
-param y_out: color;
+param x_in: u16;
+param b_in: u16;
+param y_out: u16;
 param width: u16;
 param height: u16;
 param control_ep: u16;
@@ -29,13 +29,13 @@ const dsd_Ax_temp = @get_dsd(mem1d_dsd, .{.tensor_access = |i|{height}->Ax_temp[
 export var A = @zeros([height, width]f32);
 const dsd_A = @get_dsd(mem1d_dsd, .{.tensor_access = |i|{height}->A[i, 0], .wavelet_index_offset = true});
 
-const in = @get_dsd(fabin_dsd, .{.extent = height, .fabric_color = b_in, .input_queue = b_in_q});
-const out = @get_dsd(fabout_dsd, .{.extent = height, .fabric_color = y_out, .output_queue = y_out_q});
+const in = @get_dsd(fabin_dsd, .{.extent = height, .fabric_color = @get_color(b_in), .input_queue = b_in_q});
+const out = @get_dsd(fabout_dsd, .{.extent = height, .fabric_color = @get_color(y_out), .output_queue = y_out_q});
 
 export var idx: u16 = 0;
 
 // Wavelet-triggered task (WTT) that consumes the stream of vector 'x'.
-const wtt_x_id = if (@is_arch("wse3")) @get_data_task_id(x_in_q) else @get_data_task_id(x_in);
+const wtt_x_id = if (@is_arch("wse3")) @get_data_task_id(x_in_q) else @get_data_task_id(@get_color(x_in));
 task wtt_x(data: f32) void {
   @fmacs(dsd_Ax_temp, dsd_Ax_temp, dsd_A, data, .{.index = 2 * idx});
   idx += 1;
@@ -56,10 +56,10 @@ task sentinel() void {
 comptime {
   @bind_data_task(wtt_x, wtt_x_id);
   @bind_control_task(sentinel, sentinel_id);
-  @initialize_queue(x_in_q, .{.color = x_in});
-  @initialize_queue(b_in_q, .{.color = b_in});
+  @initialize_queue(x_in_q, .{.color = @get_color(x_in)});
+  @initialize_queue(b_in_q, .{.color = @get_color(b_in)});
 
   if (@is_arch("wse3")) {
-    @initialize_queue(y_out_q, .{.color = y_out});
+    @initialize_queue(y_out_q, .{.color = @get_color(y_out)});
   }
 }

@@ -13,11 +13,11 @@
 // limitations under the License.
 
 
-param memcpyParams: comptime_struct;
+param memcpyParams;
 
-param reduceParams: comptime_struct;
+param reduceParams;
 
-param stencilParams: comptime_struct;
+param stencilParams;
 
 param MAX_ZDIM: i16; // size of vector x
 
@@ -32,16 +32,18 @@ const timestamp = @import_module("<time>");
 const sys_mod = @import_module( "<memcpy/memcpy>", memcpyParams);
 
 // allreduce uses input queue/output queue 2
-const reduce_mod = @import_module( "../../benchmark-libs/allreduce/pe.csl", @concat_structs(reduceParams, .{
+const reduce_mod = @import_module( "../../benchmark-libs/allreduce/pe.csl", .{
+     .reduce_params = reduceParams,
      .f_callback = sys_mod.unblock_cmd_stream,
      .queues = [1]u16{2},
      .dest_dsr_ids = [1]u16{1},
      .src0_dsr_ids = [1]u16{1},
      .src1_dsr_ids = [1]u16{1}
-     }));
+     });
 
 // output queue cannot overlap input queues
-const stencil_mod = @import_module( "../../benchmark-libs/stencil_3d_7pts/pe.csl", @concat_structs(stencilParams, .{
+const stencil_mod = @import_module( "../../benchmark-libs/stencil_3d_7pts/pe.csl", .{
+     .stencil_params = stencilParams,
      .f_callback = sys_mod.unblock_cmd_stream,
      .input_queues = [4]u16{4, 5, 6, 7},
      .output_queues = if (@is_arch("wse3")) [4]u16{4, 5, 6, 7} else [1]u16{3},
@@ -50,7 +52,7 @@ const stencil_mod = @import_module( "../../benchmark-libs/stencil_3d_7pts/pe.csl
      .dest_dsr_ids = [2]u16{2,3},
      .src0_dsr_ids = [1]u16{2},
      .src1_dsr_ids = [2]u16{2,3}
-     }));
+     });
 
 
 // tsc_size_words = 3
