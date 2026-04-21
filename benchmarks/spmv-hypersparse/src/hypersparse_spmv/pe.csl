@@ -17,7 +17,7 @@
 param f_callback : fn ()void;
 
 param input_queues:[4]u16;
-param output_queues:[2]u16;
+param output_queues:[4]u16;
 
 // explicit DSR allocation
 param dest_dsr_ids:[6]u16;
@@ -176,7 +176,7 @@ var tsc_reduce_end_buffer = @zeros([timestamp.tsc_size_words]u16);
 // var TSC_VALUE_TO_WAIT_UNTIL = [3]u16 { 0x9c40, 0x0, 0x0 };        // 40K cycles
 var TSC_VALUE_TO_WAIT_UNTIL = [3]u16 { 0x3e8, 0x0, 0x0 };         // 1K cycles
 
-// WARNING: reserve input/output queue 0 for memcpy module
+// WARNING: input/output queues must avoid reserved queues.
 // uthreads for fabric data movement
 const RX_NORTH_Q: u16 = input_queues[0];
 const RX_SOUTH_Q: u16 = input_queues[1];
@@ -184,8 +184,8 @@ const TX_NORTH_Q: u16 = output_queues[0];
 const TX_SOUTH_Q: u16 = output_queues[1];
 // reduction trains, corresponding rx and tx are not active simultaneously
 // NOTE: the two phases are exclusive, so uthreads can actually be reused from north-south
-const TX_WEST_Q: u16 = output_queues[0];
-const TX_EAST_Q: u16 = output_queues[1];
+const TX_WEST_Q: u16 = output_queues[2];
+const TX_EAST_Q: u16 = output_queues[3];
 const RX_WEST_Q: u16 = input_queues[2];
 const RX_EAST_Q: u16 = input_queues[3];
 
@@ -292,49 +292,41 @@ const rx_south_dsd = @get_dsd(fabin_dsd, .{
 });
 const tx_north_dsd = @get_dsd(fabout_dsd, .{
     .extent = local_vec_sz,                 // fp32 => 1 per wavelet
-    .fabric_color = north_train,
     .output_queue = @get_output_queue(TX_NORTH_Q),
 });
 const tx_south_dsd = @get_dsd(fabout_dsd, .{
     .extent = local_vec_sz,
-    .fabric_color = south_train,
     .output_queue = @get_output_queue(TX_SOUTH_Q),
 });
 const tx_north_ctrl_adv_dsd = @get_dsd(fabout_dsd, .{
     .extent = 2,    // two switch wavelets
     .control = true,
-    .fabric_color = north_train,
     .output_queue = @get_output_queue(TX_NORTH_Q),
 });
 const tx_south_ctrl_adv_dsd = @get_dsd(fabout_dsd, .{
     .extent = 2,    // two switch wavelets
     .control = true,
-    .fabric_color = south_train,
     .output_queue = @get_output_queue(TX_SOUTH_Q),
 });
 const tx_north_ctrl_rst_dsd = @get_dsd(fabout_dsd, .{
     .extent = 1,    // two switch wavelets
     .control = true,
-    .fabric_color = north_train,
     .output_queue = @get_output_queue(TX_NORTH_Q),
 });
 const tx_south_ctrl_rst_dsd = @get_dsd(fabout_dsd, .{
     .extent = 1,    // two switch wavelets
     .control = true,
-    .fabric_color = south_train,
     .output_queue = @get_output_queue(TX_SOUTH_Q),
 });
 
 // 2. reduce phase: west and east trains for partial output vectors (sparse: vals + rows)
 const tx_west_dsd = @get_dsd(fabout_dsd, .{
     .extent = 1,
-    .fabric_color = tx_west_train,
     .output_queue = @get_output_queue(TX_WEST_Q),
 });
 
 const tx_east_dsd = @get_dsd(fabout_dsd, .{
     .extent = 1,
-    .fabric_color = tx_east_train,
     .output_queue = @get_output_queue(TX_EAST_Q),
 });
 
@@ -1888,14 +1880,23 @@ comptime {
 // the compiler no longer can generate the instruction to set up the
 // config register of input queue.
 comptime {
-    // color south_train maps to RX_NORTH_Q: u16 = 4;
-    // color north_train maps to RX_SOUTH_Q: u16 = 1;
-    // color rx_east_train maps to RX_WEST_Q: u16 = 6;
-    // color rx_west_train maps to RX_EAST_Q: u16 = 7;
+    // color south_train maps to RX_NORTH_Q: u16 = 2;
+    // color north_train maps to RX_SOUTH_Q: u16 = 3;
+    // color rx_east_train maps to RX_WEST_Q: u16 = 4;
+    // color rx_west_train maps to RX_EAST_Q: u16 = 5;
     @initialize_queue(@get_input_queue(RX_NORTH_Q), .{.color = south_train});
     @initialize_queue(@get_input_queue(RX_SOUTH_Q), .{.color = north_train});
     @initialize_queue(@get_input_queue(RX_WEST_Q), .{.color = rx_east_train});
     @initialize_queue(@get_input_queue(RX_EAST_Q), .{.color = rx_west_train});
+}
+
+comptime {
+    if (@is_arch("wse3")) {
+        @initialize_queue(@get_output_queue(TX_NORTH_Q), .{.color = north_train});
+        @initialize_queue(@get_output_queue(TX_SOUTH_Q), .{.color = south_train});
+        @initialize_queue(@get_output_queue(TX_WEST_Q), .{.color = tx_west_train});
+        @initialize_queue(@get_output_queue(TX_EAST_Q), .{.color = tx_east_train});
+    }
 }
 
 comptime {
