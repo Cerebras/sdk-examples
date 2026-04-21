@@ -1,4 +1,4 @@
-CSL Examples
+SDK Examples
 ============
 
 Register to access the Cerebras SDK `here <https://www.cerebras.ai/developers/sdk-request>`_.
