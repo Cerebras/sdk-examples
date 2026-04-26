@@ -53,7 +53,7 @@ runner.launch('init_and_compute', nonblock=False)
 
 # Copy y back from device
 # Arguments to memcpy_d2h:
-# - y_result is array on host which will story copied-back array
+# - y_result is array on host which will store the copied-back array
 # - y_symbol is symbol of device tensor to be copied
 # - 0, 0, 1, 1 are (starting x-coord, starting y-coord, width, height)
 #   of rectangle of PEs whose data is to be copied
