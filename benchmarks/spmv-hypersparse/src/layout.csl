@@ -21,9 +21,9 @@
 //   4  c3             14  tx_south         24   compute_local        34 reserved (memcpy)
 //   5  c4             15  rx_north         25   curr_rx_north_done   35 reserved (memcpy)
 //   6  c5             16  rx_south         26   curr_rx_south_done   36 reserved (memcpy)
-//   7  allreduce_c0   17  rx_east          27   reserved (memcpy)    37 reserved (memcpy)
-//   8  allreduce_c1   18  rx_west          28   reserved (memcpy)
-//   9  allreduce_EN1  19  tx_west          29   reserved (memcpy)
+//   7                 17  rx_east          27   reserved (memcpy)    37 reserved (memcpy)
+//   8                 18  rx_west          28   reserved (memcpy)
+//   9                 19  tx_west          29   reserved (memcpy)
 
 // routable colors for spmv
 param c0 = @get_color(1);
@@ -32,12 +32,6 @@ param c2 = @get_color(3);
 param c3 = @get_color(4);
 param c4 = @get_color(5);
 param c5 = @get_color(6);
-
-// routable colors for allreduce
-param allreduce_c0 = @get_color(7);
-param allreduce_c1 = @get_color(8);
-// entrypoint for allreduce
-param allreduce_EN1: local_task_id = @get_local_task_id(9);
 
 // entrypoints for spmv
 param EN1: local_task_id = @get_local_task_id(10);
@@ -82,14 +76,6 @@ const spmv = @import_module( "hypersparse_spmv/layout.csl", .{
     .width = pcols,
     .height = prows
     });
-
-const reduce = @import_module( "allreduce2R1E/layout.csl", .{
-    .colors = [2]color{allreduce_c0, allreduce_c1},
-    .entrypoints = [1]local_task_id{allreduce_EN1},
-    .width = pcols,
-    .height = prows
-    });
-
 const memcpy = @import_module( "<memcpy/get_params>", .{
     .width = pcols,
     .height = prows,
@@ -115,11 +101,9 @@ layout {
 
             const memcpyParams = memcpy.get_params(pcol_id);
             const spmvParams = spmv.get_params(pcol_id, prow_id);
-            const reduceParams = reduce.get_params(pcol_id, prow_id);
             var params = .{
                 .memcpyParams = memcpyParams,
                 .spmvParams = spmvParams,
-                .reduceParams = reduceParams,
                 .nrows = nrows,
                 .ncols = ncols,
                 .local_vec_sz = local_vec_sz,

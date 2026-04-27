@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
+# WSE-3 support contributed by Integrated Reasoning, Inc.
+# https://www.integrated-reasoning.com
+# david@integrated-reasoning.com
 
 set -e
 
-cslc ./src/layout.csl --arch wse2 --fabric-dims=11,6 --fabric-offsets=4,1 \
+cslc ./src/layout.csl --arch wse3 --fabric-dims=11,6 --fabric-offsets=4,1 \
 --params=ncols:16,nrows:16,pcols:4,prows:4,max_local_nnz:8 \
 --params=max_local_nnz_cols:4,max_local_nnz_rows:4,local_vec_sz:1 \
 --params=local_out_vec_sz:1,y_pad_start_row_idx:4 -o=out \

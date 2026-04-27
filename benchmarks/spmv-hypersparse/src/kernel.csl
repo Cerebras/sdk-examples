@@ -17,8 +17,6 @@ param memcpyParams;
 
 param spmvParams;
 
-param reduceParams;
-
 // parameters
 param nrows: u32;   // total number of matrix rows
 param ncols: u32;   // total number of matrix cols (= nrows)
@@ -51,14 +49,11 @@ var local_nnz_rows = @zeros([1]u16);    // actual local number of nnz rows
 // final reduced local output vector (dense)
 var y_local_buf = @zeros([local_out_vec_sz]f32);
 
-// temporary buffer for allreduce
-var dot = @zeros([1]f32);
-
 const timestamp = @import_module("<time>");
 
 const sys_mod = @import_module( "<memcpy/memcpy>", memcpyParams);
 
-// input_queues cannot overlap with output_queues
+// input_queues/output_queues must avoid memcpy-reserved queues.
 const spmv_mod = @import_module( "hypersparse_spmv/pe.csl", .{
      .spmv_params = spmvParams,
      .f_callback = sys_mod.unblock_cmd_stream,
@@ -82,33 +77,22 @@ const spmv_mod = @import_module( "hypersparse_spmv/pe.csl", .{
      .local_nnz_cols = &local_nnz_cols,
      .local_nnz_rows = &local_nnz_rows,
 
-     .input_queues=[4]u16{4, 1, 6, 7},
-     .output_queues=[2]u16{2,3},
+     .input_queues=[4]u16{2, 3, 4, 5},
+     .output_queues=[4]u16{4, 5, 2, 3},
      .dest_dsr_ids = [6]u16{1, 4, 5, 6, 2, 3},
      .src1_dsr_ids = [6]u16{4, 1, 6, 7, 2, 3},
-     });
-
-// allreduce uses input queue/output queue 5
-// dest_dsr and src0_dsr must be a valid pair, for example (7,1) is invalid
-const reduce_mod = @import_module( "allreduce2R1E/pe.csl", .{
-     .reduce_params = reduceParams,
-     .f_callback = sys_mod.unblock_cmd_stream,
-     .MAX_ZDIM = 1,
-     .queues = [1]u16{5},
-     .dest_dsr_ids = [1]u16{7},
-     .src0_dsr_ids = [1]u16{7},
-     .src1_dsr_ids = [1]u16{5}
      });
 
 // tsc library
 var tsc_start_buffer = @zeros([timestamp.tsc_size_words]u16);
 var tsc_end_buffer = @zeros([timestamp.tsc_size_words]u16);
+var tsc_wait_until = [timestamp.tsc_size_words]u16{ 0x3e8, 0x0, 0x0 };
 
 // time_buf_u16[0:5] = {tsc_start_buffer, tsc_end_buffer}
 var time_buf_u16 = @zeros([timestamp.tsc_size_words*2]u16);
 var ptr_time_buf_u16: [*]u16 = &time_buf_u16;
 
-// reference clock inside allreduce module
+// reference clock for host timing alignment
 var time_ref_u16 = @zeros([timestamp.tsc_size_words]u16);
 var ptr_time_ref_u16: [*]u16 = &time_ref_u16;
 
@@ -171,15 +155,41 @@ fn f_memcpy_timestamps() void {
     sys_mod.unblock_cmd_stream();
 }
 
-fn f_sync( n: i16 ) void {
-   reduce_mod.allreduce(n, &dot);
+fn is_less_than(aval: *[timestamp.tsc_size_words]u16, bval: *[timestamp.tsc_size_words]u16) bool {
+    if ((aval.*)[2] < (bval.*)[2]) {
+        return true;
+    } else if ((aval.*)[2] == (bval.*)[2]) {
+        if ((aval.*)[1] < (bval.*)[1]) {
+            return true;
+        } else if ((aval.*)[1] == (bval.*)[1]) {
+            if ((aval.*)[0] < (bval.*)[0]) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+fn f_sync(n: i16) void {
+    if (n == -1) {
+        time_ref_u16[0] = time_ref_u16[0];
+    }
+    var curr = @zeros([timestamp.tsc_size_words]u16);
+    while (true) {
+        timestamp.get_timestamp(&curr);
+        if (!is_less_than(&curr, &tsc_wait_until)) {
+            break;
+        }
+    }
+    time_ref_u16[0] = curr[0];
+    time_ref_u16[1] = curr[1];
+    time_ref_u16[2] = curr[2];
+
+    sys_mod.unblock_cmd_stream();
 }
 
 fn f_reference_timestamps() void {
-
-    time_ref_u16[0] = reduce_mod.tscRefBuffer[0];
-    time_ref_u16[1] = reduce_mod.tscRefBuffer[1];
-    time_ref_u16[2] = reduce_mod.tscRefBuffer[2];
+    timestamp.get_timestamp(&time_ref_u16);
 
     // the user must unblock cmd color for every PE
     sys_mod.unblock_cmd_stream();
