@@ -92,7 +92,7 @@ def get_demux_adaptor(layout, name, batch_size, num_batches):
 #
 # The x demux layer differs from the b demux layer in that it is positioned
 # horizontally. There is no need to do that but it helps to demonstrate a
-# variation of the layer with different routing charachteristics.
+# variation of the layer with different routing characteristics.
 #
 # In addition, the x demux layer will also enable a control entry point
 # after 'batch_size' wavelets are sent. This entry point informs the
