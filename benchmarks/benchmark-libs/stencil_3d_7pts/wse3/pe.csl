@@ -90,7 +90,7 @@ const out_ut: ut_id = @get_ut_id(output_ut_id);
 //     c_south  * x[i  ][j-1][k  ] + c_north * x[i  ][j+1][k  ] +
 //     c_bottom * x[i  ][j  ][k-1] + c_top  * x[i  ][j  ][k+1] +
 //     c_center * x[i][j][k]
-// The following stencil coefficents are passed by spmv()
+// The following stencil coefficients are passed by spmv()
 var c_west: f32;
 var c_east: f32;
 var c_south: f32;
@@ -230,7 +230,7 @@ var fab_trans_south_wdsd = @get_dsd(fabout_dsd, .{
 //
 //  The callback is triggered when spmv() finishes.
 //
-//  The user can adjust coefficents around the boundary to handle
+//  The user can adjust coefficients around the boundary to handle
 //  Neumann condition.
 //  For example, (-1, 2, 1) becomes (2, -2) at west boundary.
 //

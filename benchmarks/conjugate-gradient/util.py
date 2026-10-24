@@ -83,7 +83,7 @@ def oned_to_hwl_colmajor(height: int, width: int, pe_length: int, A_1d: np.ndarr
 #            +--------+
 #
 # The stencil coefficients "stencil_coeff" can vary along x-y direction,
-# but universal along z-direction. Each PE can have seven coefficents,
+# but universal along z-direction. Each PE can have seven coefficients,
 # west, east, south, north, bottom, top and center.
 #
 # Input:
@@ -160,7 +160,7 @@ def csr_7_pt_stencil(stencil_coeff, height, width, pe_length):
 
   N = height * width * pe_length
 
-  # each point has 7 coefficents at most
+  # each point has 7 coefficients at most
   cooRows = np.zeros(7 * N, np.int32)
   cooCols = np.zeros(7 * N, np.int32)
   cooVals = np.zeros(7 * N, np.float32)
